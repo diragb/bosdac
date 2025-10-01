@@ -1,7 +1,5 @@
-'use client'
-
 // Packages:
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { cn } from '@/lib/utils'
 import localforage from 'localforage'
@@ -9,13 +7,6 @@ import localforage from 'localforage'
 // Typescript:
 import type { MOSDACLogData, MOSDACLog } from './api/mosdac-log'
 import { MOSDACImageMode } from './api/mosdac'
-
-// Components:
-import { GoogleMap, LoadScript, GroundOverlay, Libraries } from '@react-google-maps/api'
-import Footer from '@/components/Footer'
-import { Button } from '@/components/ui/button'
-import LayersCombobox from '@/components/LayersCombobox'
-import HistoryCombobox from '@/components/HistoryCombobox'
 
 // Classes:
 class Box {
@@ -34,8 +25,6 @@ class Box {
 }
 
 // Constants:
-const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
-const ZOOM = 5
 const ADJUSTMENTS = [0, 1.25, 0.5, -1, -1.5, 0] as const
 const BOXES = [
   [
@@ -76,30 +65,15 @@ const BOXES = [
     new Box('14054085.712,-9459784.055,17338010.690,-5675870.433',{north:-45.34418709+ADJUSTMENTS[4],east:155.7499999910,south:-64.4299080496+ADJUSTMENTS[5],west:126.2499999946}),
   ],
 ] as const
-const TOUCHED_LOG_TTL = 60 * 1000
-const TOUCHED_LOGS_LIMIT = 10
 
 // Functions:
-const Home = () => {
-  // Ref:
-  const mapRef = useRef<GoogleMap | null>(null)
-  // const selectedLogName = useRef<string | null>(null)
-
+const Overlay = () => {
   // State:
-  const [LIBRARIES] = useState<Libraries>(['places'])
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [isFetchingImages, setIsFetchingImages] = useState(false)
   const [logs, setLogs] = useState<MOSDACLogData>([])
   const [selectedLog, setSelectedLog] = useState<MOSDACLog | null>(null)
-  const [touchedLogsTTLIntervals, setTouchedLogsTTLIntervals] = useState<Map<string, ReturnType<typeof setInterval>>>(new Map())
-  const [touchedLogsQueue, setTouchedLogsQueue] = useState<MOSDACLog[]>([])
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
-  const [opacity, setOpacity] = useState(0.85)
-  const [isAnimationOn, setIsAnimationOn] = useState(false)
-  const [legends, setLegends] = useState<string[]>([])
-  const [currentCenter, setCurrentCenter] = useState<google.maps.LatLngLiteral>(CENTER)
-  const [currentZoom, setCurrentZoom] = useState(ZOOM)
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
   // Functions:
   const sortLogs = (logs: MOSDACLogData) => {
@@ -211,25 +185,8 @@ const Home = () => {
     }
   }
 
-  const onTouchedLogsQueueOverflow = () => {
-    if (touchedLogsQueue.length < 1 || touchedLogsQueue.length < TOUCHED_LOGS_LIMIT) return
-    
-    const newTouchedLogsQueue = [...touchedLogsQueue]
-    const oldestLogToPop = newTouchedLogsQueue.shift()
-    if (oldestLogToPop === undefined) return
-
-    setTouchedLogsTTLIntervals(_touchedLogsTTLIntervals => {
-      const newTouchedLogsTTLIntervals = new Map(_touchedLogsTTLIntervals)
-      newTouchedLogsTTLIntervals.delete(oldestLogToPop.name)
-      return newTouchedLogsTTLIntervals
-    })
-    setTouchedLogsQueue(newTouchedLogsQueue)
-  }
-
   const onLogSelect = (log: MOSDACLog) => {
-    fetchMOSDACImages(log).then(() => {
-      setSelectedLog(log)
-    })
+    fetchMOSDACImages(log)
     // selectedLogName.current = log.name
 
     // if (touchedLogsQueue.length >= TOUCHED_LOGS_LIMIT) onTouchedLogsQueueOverflow()
@@ -260,135 +217,30 @@ const Home = () => {
   useEffect(() => {
     getMOSDACLogData()
   }, [])
-  
-  /**
-   * Layers: [Winds, Heatmap, Both], Fire & Smoke, CLoudburst/Heavy Rain, Rip Current (Forecast), Snow, Cyclone Track
-      History: Select from log
-      Animation: Select Timerange (from log) and start animation
-      Legends: Grayscale, etc.
-   */
 
   // Return:
   return (
-    <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
-      <div className='absolute right-3 top-3 z-10 flex justify-center items-center flex-col gap-2 w-42 p-3 bg-white rounded'>
-        <LayersCombobox />
-        {
-          logs.length > 0 && (
-            <HistoryCombobox
-              logs={logs}
-              selectedLog={selectedLog}
-              onSelect={onLogSelect}
-            />
-          )
-        }
-        <Button variant='outline' className='relative w-full cursor-pointer'>
-          <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : 'bg-rose-400')} />
-          Animation
-        </Button>
-        <Button variant='outline' className='relative w-full cursor-pointer'>
-          {
-            legends.length > 0 && (
-              <div className='absolute -top-2 -right-2 z-10 flex justify-center items-center w-4 h-4 text-xs text-[10px] text-white bg-blue-600 rounded-full'>{legends.length}</div>
-            )
-          }
-          Legends
-        </Button>
-      </div>
-      <LoadScript googleMapsApiKey={process.env['NEXT_PUBLIC_GOOGLE_MAPS_KEY'] as string} libraries={LIBRARIES}>
-        <GoogleMap
-          mapContainerStyle={{
-            width: '100%',
-            height: 'calc(100% - 40px)'
-          }}
-          center={CENTER}
-          zoom={ZOOM}
-          ref={mapRef}
-          options={{
-            fullscreenControl: false,
-            zoomControl: false,
-            streetViewControl: false,
-          }}
-          clickableIcons={false}
-          onLoad={map => setMapInstance(map)}
-          onDrag={() => {
-            if (mapRef.current) {
-              const map = mapRef.current.state.map
-              if (map) {
-                const center = map.getCenter()
-                const zoom = map.getZoom()
-                setCurrentCenter({ lat: center?.lat() ?? CENTER.lat, lng: center?.lng() ?? CENTER.lng })
-                setCurrentZoom(zoom ?? ZOOM)
-              }
+    <div className='absolute flex items-center justify-center flex-col w-screen h-screen'>
+      {
+        selectedLog !== null && BOXES.map((boxRow, index) => (
+          <div key={index} className='flex items-center justify-center flex-row w-full'>
+            {
+              boxRow.map((box, jindex) => (
+                <div
+                  key={jindex}
+                  className='relative w-40 h-40 bg-cover bg-center bg-no-repeat'
+                  style={{
+                    backgroundImage: `url(${images.get(box.bbox + mode + selectedLog.when.formatted) ?? ''})`,
+                  }}
+                />
+              ))
             }
-          }}
-          onZoomChanged={() => {
-            if (mapRef.current) {
-              const map = mapRef.current.state.map
-              if (map) {
-                const center = map.getCenter()
-                const zoom = map.getZoom()
-                setCurrentCenter({ lat: center?.lat() ?? CENTER.lat, lng: center?.lng() ?? CENTER.lng })
-                setCurrentZoom(zoom ?? ZOOM)
-              }
-            }
-          }}
-        >
-          {
-            selectedLog !== null && BOXES.map((boxRow, index) => (
-              <React.Fragment key={index}>
-                {
-                  boxRow.map(box => (
-                    <GroundOverlay
-                      key={box.bbox + mode + selectedLog.when.formatted + (images.has(box.bbox + mode + selectedLog.when.formatted) ? 'A' : 'I')}
-                      bounds={box.bounds}
-                      url={images.get(box.bbox + mode + selectedLog.when.formatted)!}
-                      opacity={opacity}
-                      options={{
-                        opacity: opacity,
-                      }}
-                    />
-                  ))
-                }
-              </React.Fragment>
-            ))
-          }
-          {/* {
-            touchedLogsQueue.map(touchedLog => (
-              <React.Fragment key={`outer-${touchedLog.name}`}>
-                {
-                  BOXES.map((boxRow, index) => (
-                    <React.Fragment key={index}>
-                      {
-                        boxRow.map(box => (
-                          <GroundOverlayF
-                            key={
-                              box.bbox +
-                              mode +
-                              touchedLog.when.formatted +
-                              (images.has(box.bbox + mode + touchedLog.when.formatted) ? 'IMAGE_LOADED' : 'IMAGE_LOADING') +
-                              (selectedLog?.name === touchedLog.name ? 'SELECTED' : 'HIDDEN')
-                            }
-                            bounds={box.bounds}
-                            url={images.get(box.bbox + mode + touchedLog.when.formatted)!}
-                            options={{
-                              opacity: selectedLog?.name === touchedLog.name ? opacity : 0,
-                            }}
-                          />
-                        ))
-                      }
-                    </React.Fragment>
-                  ))
-                }
-              </React.Fragment>
-            ))
-          } */}
-        </GoogleMap>
-      </LoadScript>
-      <Footer />
+          </div>
+        ))
+      }
     </div>
   )
 }
 
 // Exports:
-export default Home
+export default Overlay
