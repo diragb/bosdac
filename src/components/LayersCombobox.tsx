@@ -3,8 +3,20 @@ import React, { useMemo, useState } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 
+// Typescript:
+export enum Layer {
+  WIND_DIRECTION = 'WIND_DIRECTION',
+  WIND_HEATMAP = 'WIND_HEATMAP',
+  FIRE_SMOKE = 'FIRE_SMOKE',
+  FIRE_SMOKE_HEATMAP = 'FIRE_SMOKE_HEATMAP',
+  CLOUDBURST_HEAVY_RAIN = 'CLOUDBURST_HEAVY_RAIN',
+  RIP_CURRENT_FORECAST = 'RIP_CURRENT_FORECAST',
+  SNOW = 'SNOW',
+  CYCLONE_TRACK = 'CYCLONE_TRACK',
+}
+
 // Assets:
-import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
+import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FlameKindlingIcon, Loader2Icon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -27,20 +39,36 @@ import {
 import { Button } from '@/components/ui/button'
 
 // Functions:
-const LayersCombobox = () => {
+const LayersCombobox = ({
+  layers,
+  setLayers,
+  layerFetchingStatus,
+  onWindDirectionLayerSelect,
+  onWindHeatmapLayerSelect,
+  onFireSmokeLayerSelect,
+  onFireSmokeHeatmapLayerSelect,
+}: {
+  layers: Layer[]
+  setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
+  layerFetchingStatus: Map<Layer, boolean>
+  onWindDirectionLayerSelect: () => void
+  onWindHeatmapLayerSelect: () => void
+  onFireSmokeLayerSelect: () => void
+  onFireSmokeHeatmapLayerSelect: () => void
+}) => {
   // Memo:
   const LAYERS = useMemo(() => [
-    { id: 'wind-direction', icon: <WindIcon className='text-inherit transition-all' />, name: 'Wind Direction' },
-    { id: 'wind-heatmap', icon: <BrickWallFireIcon className='text-inherit transition-all' />, name: 'Wind Heatmap' },
-    { id: 'fire-smoke', icon: <FlameIcon className='text-inherit transition-all' />, name: 'Fire & Smoke' },
-    { id: 'cloudburst-heavy-rain', icon: <CloudHailIcon className='text-inherit transition-all' />, name: 'Cloudburst/Heavy Rain' },
-    { id: 'rip-current-forecast', icon: <WavesIcon className='text-inherit transition-all' />, name: 'Rip Current (Forecast)' },
-    { id: 'snow', icon: <SnowflakeIcon className='text-inherit transition-all' />, name: 'Snow' },
-    { id: 'cyclone-track', icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
+    { id: Layer.WIND_DIRECTION, icon: <WindIcon className='text-inherit transition-all' />, name: 'Wind Direction' },
+    { id: Layer.WIND_HEATMAP, icon: <BrickWallFireIcon className='text-inherit transition-all' />, name: 'Wind Heatmap' },
+    { id: Layer.FIRE_SMOKE, icon: <FlameIcon className='text-inherit transition-all' />, name: 'Fire & Smoke' },
+    { id: Layer.FIRE_SMOKE_HEATMAP, icon: <FlameKindlingIcon className='text-inherit transition-all' />, name: 'Fire & Smoke Heatmap' },
+    { id: Layer.CLOUDBURST_HEAVY_RAIN, icon: <CloudHailIcon className='text-inherit transition-all' />, name: 'Cloudburst/Heavy Rain' },
+    { id: Layer.RIP_CURRENT_FORECAST, icon: <WavesIcon className='text-inherit transition-all' />, name: 'Rip Current (Forecast)' },
+    { id: Layer.SNOW, icon: <SnowflakeIcon className='text-inherit transition-all' />, name: 'Snow' },
+    { id: Layer.CYCLONE_TRACK, icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
   ], [])
 
   // State:
-  const [layers, setLayers] = useState<string[]>([])
   const [layersPopoverOpen, setLayersPopoverOpen] = useState(false)
 
   // Return:
@@ -65,10 +93,27 @@ const LayersCombobox = () => {
                   key={layer.id}
                   value={layer.id}
                   onSelect={currentValue => {
-                    if (layers.includes(currentValue)) {
+                    if (layers.includes(currentValue as Layer)) {
                       setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
                     } else {
                       setLayers(_layers => [...layers, layer.id])
+
+                      switch (layer.id) {
+                        case Layer.WIND_DIRECTION:
+                          onWindDirectionLayerSelect()
+                          break
+                        case Layer.WIND_HEATMAP:
+                          onWindHeatmapLayerSelect()
+                          break
+                        case Layer.FIRE_SMOKE:
+                          onFireSmokeLayerSelect()
+                          break
+                        case Layer.FIRE_SMOKE_HEATMAP:
+                          onFireSmokeHeatmapLayerSelect()
+                          break
+                        default:
+                          break
+                      }
                     }
                   }}
                   className='justify-between cursor-pointer'
@@ -79,12 +124,18 @@ const LayersCombobox = () => {
                       {layer.name}
                     </span>
                   </div>
-                  <CheckIcon
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
+                  {
+                    layerFetchingStatus.has(layer.id) ? (
+                      <Loader2Icon className='size-3 animate-spin' />
+                    ) : (
+                      <CheckIcon
+                        className={cn(
+                          'size-4',
+                          layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                    )
+                  }
                 </CommandItem>
               ))}
             </CommandGroup>

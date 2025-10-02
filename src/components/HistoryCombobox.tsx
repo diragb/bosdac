@@ -102,7 +102,7 @@ const HistoryCombobox = ({
   return (
     <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant='outline' className='relative w-full cursor-pointer'>
+        <Button variant='outline' className='relative w-full cursor-pointer' disabled={logs.length === 0}>
           <div
             className={cn(
               'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
@@ -147,7 +147,7 @@ const HistoryCombobox = ({
                       ) : (
                         <CheckIcon
                           className={cn(
-                            'mr-2 h-4 w-4',
+                            'size-4',
                             log.name === selectedLog?.name ? 'opacity-100' : 'opacity-0'
                           )}
                         />

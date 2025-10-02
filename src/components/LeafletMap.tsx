@@ -1,31 +1,76 @@
 'use client'
 
 // Packages:
-import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, ImageOverlay } from 'react-leaflet'
+import React, { useEffect, useMemo, useState } from 'react'
+import { MapContainer, TileLayer, ImageOverlay, useMapEvents } from 'react-leaflet'
+import dynamic from 'next/dynamic'
 
 // Typescript:
 import type { MOSDACLog } from '../pages/api/mosdac-log'
 import { MOSDACImageMode } from '../pages/api/mosdac'
+import { Layer } from './LayersCombobox'
+import type { FirePoint } from '@/lib/toFirePoint'
+import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
+
+// Assets:
+import 'leaflet-velocity/dist/leaflet-velocity.css'
+import 'leaflet-velocity'
 
 // Constants:
-import { BOXES } from '@/pages/leaflet'
-import { CRS } from 'leaflet'
+import { BOXES } from '@/pages/index'
+import { CRS, HeatLatLngTuple } from 'leaflet'
 const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
 const ZOOM = 5
 
+// Components:
+const WindLayer = dynamic(() => import('../components/WindLayer'), { ssr: false })
+const WindHeatmapLayer = dynamic(() => import('../components/WindHeatmapLayer'), { ssr: false })
+const FireSmokeLayer = dynamic(() => import('../components/FireSmokeLayer'), { ssr: false })
+const FireSmokeHeatmapLayer = dynamic(() => import('../components/FireSmokeHeatmapLayer'), { ssr: false })
+
 // Functions:
+const DragWatcher = ({
+  setIsDragging,
+}: {
+  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>
+}) => {
+  useMapEvents({
+    dragstart: () => setIsDragging(true),
+    dragend: () => setIsDragging(false),
+  })
+  return null
+}
+
 const LeafletMap = ({
   images,
   selectedLog,
   mode,
   opacity,
+  layers,
+  windDirectionData,
+  fireSmokeData,
+  fireSmokeHeatmapData,
 }: {
   images: Map<string, string>
   selectedLog: MOSDACLog | null
   mode: MOSDACImageMode
   opacity: number
+  layers: Layer[]
+  windDirectionData: MOSDACWindVelocity | null
+  fireSmokeData: FirePoint[] | null
+  fireSmokeHeatmapData: HeatLatLngTuple[] | null
 }) => {
+  // State:
+  const [isDragging, setIsDragging] = useState(false)
+  
+  // Memo:
+  const windLayerOptions = useMemo(() => ({
+    lineWidth: 2,
+    particleMultiplier: .005,
+    particleAge: 120,
+    velocityScale: 0.007
+  }), [])
+  
   // Effects:
   useEffect(() => {
     const attributionDiv = document.getElementsByClassName('leaflet-control-attribution leaflet-control')[0] as HTMLDivElement | undefined
@@ -43,13 +88,14 @@ const LeafletMap = ({
       center={CENTER}
       zoom={ZOOM}
       scrollWheelZoom
-      style={{
+      style={useMemo(() => ({
         width: '100%',
         height: 'calc(100% - 40px)',
-      }}
+      }), [])}
       zoomControl={false}
       crs={CRS.EPSG3857}
     >
+      <DragWatcher setIsDragging={setIsDragging} />
       {
         images.size > 0 && (
           <TileLayer
@@ -82,37 +128,29 @@ const LeafletMap = ({
           </React.Fragment>
         ))
       }
-      {/* {
-        selectedLog !== null && touchedLogsQueue.map(touchedLog => (
-          <React.Fragment key={`outer-${touchedLog.name}`}>
-            {
-              BOXES.map((boxRow, index) => (
-                <React.Fragment key={index}>
-                  {
-                    boxRow.map(box => {
-                      const key = box.bbox + mode + selectedLog.when.formatted
-                      const url = images.get(key)
-                      if (!url) return null
-
-                      return (
-                        <ImageOverlay
-                          key={key}
-                          bounds={[
-                            [box.bounds.south, box.bounds.west],
-                            [box.bounds.north, box.bounds.east]
-                          ]}
-                          url={url}
-                          opacity={selectedLog?.name === touchedLog.name ? opacity : 0}
-                        />
-                      )
-                    })
-                  }
-                </React.Fragment>
-              ))
-            }
-          </React.Fragment>
-        ))
-      } */}
+      {
+        (layers.includes(Layer.WIND_DIRECTION) && windDirectionData !== null && !isDragging) && (
+          <WindLayer
+            wind={windDirectionData}
+            options={windLayerOptions}
+          />
+        )
+      }
+      {
+        (layers.includes(Layer.WIND_HEATMAP) && windDirectionData !== null) && (
+          <WindHeatmapLayer data={windDirectionData.data} />
+        )
+      }
+      {
+        (layers.includes(Layer.FIRE_SMOKE) && fireSmokeData !== null) && (
+          <FireSmokeLayer data={fireSmokeData} />
+        )
+      }
+      {
+        (layers.includes(Layer.FIRE_SMOKE_HEATMAP) && fireSmokeHeatmapData !== null) && (
+          <FireSmokeHeatmapLayer data={fireSmokeHeatmapData} />
+        )
+      }
     </MapContainer>
   )
 }

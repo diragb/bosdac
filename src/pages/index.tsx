@@ -1,21 +1,19 @@
-'use client'
-
 // Packages:
-import React, { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { cn } from '@/lib/utils'
 import localforage from 'localforage'
+import toFirePoint from '@/lib/toFirePoint'
+import toWindVelocityFormat from '@/lib/toWindVelocityFormat'
 
 // Typescript:
+import type { MOSDACWindDirectionData } from './api/mosdac-wind-direction'
 import type { MOSDACLogData, MOSDACLog } from './api/mosdac-log'
 import { MOSDACImageMode } from './api/mosdac'
-
-// Components:
-import { GoogleMap, LoadScript, GroundOverlay, Libraries } from '@react-google-maps/api'
-import Footer from '@/components/Footer'
-import { Button } from '@/components/ui/button'
-import LayersCombobox from '@/components/LayersCombobox'
-import HistoryCombobox from '@/components/HistoryCombobox'
+import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
+import type { MOSDACFireSmoke } from './api/mosdac-fire-smoke'
+import type { FirePoint } from '@/lib/toFirePoint'
 
 // Classes:
 class Box {
@@ -34,10 +32,8 @@ class Box {
 }
 
 // Constants:
-const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
-const ZOOM = 5
-const ADJUSTMENTS = [0, 1.25, 0.5, -1, -1.5, 0] as const
-const BOXES = [
+const ADJUSTMENTS = [0, 0, 0, 0, 0, 0] as const
+export const BOXES = [
   [
     new Box('918385.800,5675870.433,4202310.778,9459784.055', {north:64.4299080496+ADJUSTMENTS[0],east:37.7500000054,south:45.3441870900+ADJUSTMENTS[1],west:8.2500000090}),
     new Box('4202310.778,5675870.433,7486235.756,9459784.055', {north:64.4299080496+ADJUSTMENTS[0],east:67.2500000018,south:45.3441870900+ADJUSTMENTS[1],west:37.7500000054}),
@@ -76,30 +72,36 @@ const BOXES = [
     new Box('14054085.712,-9459784.055,17338010.690,-5675870.433',{north:-45.34418709+ADJUSTMENTS[4],east:155.7499999910,south:-64.4299080496+ADJUSTMENTS[5],west:126.2499999946}),
   ],
 ] as const
-const TOUCHED_LOG_TTL = 60 * 1000
-const TOUCHED_LOGS_LIMIT = 10
+
+// Components:
+import Footer from '@/components/Footer'
+import { Button } from '@/components/ui/button'
+import LayersCombobox, { Layer } from '@/components/LayersCombobox'
+import HistoryCombobox from '@/components/HistoryCombobox'
+import LegendsCombobox from '@/components/ModesCombobox'
+const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
+import { Slider } from '@/components/ui/slider'
+import { HeatLatLngTuple } from 'leaflet'
 
 // Functions:
-const Home = () => {
-  // Ref:
-  const mapRef = useRef<GoogleMap | null>(null)
-  // const selectedLogName = useRef<string | null>(null)
-
+const Leaflet = () => {
   // State:
-  const [LIBRARIES] = useState<Libraries>(['places'])
+  const [layers, setLayers] = useState<Layer[]>([])
+  const [windDirectionData, setWindDirectionData] = useState<MOSDACWindVelocity | null>(null)
+  const [isFetchingWindDirectionData, setIsFetchingWindDirectionData] = useState(false)
+  const [fireSmokeData, setFireSmokeData] = useState<FirePoint[] | null>(null)
+  const [isFetchingFireSmokeData, setIsFetchingFireSmokeData] = useState(false)
+  const [fireSmokeHeatmapData, setFireSmokeHeatmapData] = useState<HeatLatLngTuple[] | null>(null)
+  const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [isFetchingImages, setIsFetchingImages] = useState(false)
+  const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number>>(new Map())
   const [logs, setLogs] = useState<MOSDACLogData>([])
   const [selectedLog, setSelectedLog] = useState<MOSDACLog | null>(null)
-  const [touchedLogsTTLIntervals, setTouchedLogsTTLIntervals] = useState<Map<string, ReturnType<typeof setInterval>>>(new Map())
-  const [touchedLogsQueue, setTouchedLogsQueue] = useState<MOSDACLog[]>([])
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
+  const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number>>(new Map())
   const [opacity, setOpacity] = useState(0.85)
   const [isAnimationOn, setIsAnimationOn] = useState(false)
-  const [legends, setLegends] = useState<string[]>([])
-  const [currentCenter, setCurrentCenter] = useState<google.maps.LatLngLiteral>(CENTER)
-  const [currentZoom, setCurrentZoom] = useState(ZOOM)
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
   // Functions:
   const sortLogs = (logs: MOSDACLogData) => {
@@ -152,8 +154,9 @@ const Home = () => {
     return `/api/mosdac?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
   }
 
-  const fetchMOSDACImages = async (log: MOSDACLog) => {
+  const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log') => {
     try {
+      let fetchedImageCount = 0
       const existingImages = new Map(images)
       const requests: Array<Promise<{ key: string, url: string }>> = []
 
@@ -163,7 +166,7 @@ const Home = () => {
           if (existingImages.has(key)) continue
 
           const imageURL = getMOSDACImageURL(box, log, mode)
-          const req = new Promise<{ key: string, url: string }>(resolve => {
+          const request = new Promise<{ key: string, url: string }>(resolve => {
             localforage.getItem<Blob>(key).then(image => {
               if (image !== null) resolve({ key, url: URL.createObjectURL(image) })
               else {
@@ -186,7 +189,7 @@ const Home = () => {
               }
             })
           })
-          requests.push(req)
+          requests.push(request)
         }
       }
 
@@ -194,6 +197,19 @@ const Home = () => {
 
       for (const request of requests) {
         request.then(({ key, url }) => {
+          if (forProperty === 'log') {
+            setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+              const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+              newHistoricalLogsFetchingStatus.set(log.name, ++fetchedImageCount/requests.length)
+              return newHistoricalLogsFetchingStatus
+            })
+          } else if (forProperty === 'mode') {
+            setModeFetchingStatus(_modeFetchingStatus => {
+              const newModeFetchingStatus = new Map(_modeFetchingStatus)
+              newModeFetchingStatus.set(mode, ++fetchedImageCount/requests.length)
+              return newModeFetchingStatus
+            })
+          }
           setImages(prev => {
             const next = new Map(prev)
             next.set(key, url)
@@ -205,190 +221,215 @@ const Home = () => {
 
       await Promise.allSettled(requests)
     } catch (error) {
-    
+      console.error(error)
     } finally {
       setIsFetchingImages(false)
     }
   }
 
-  const onTouchedLogsQueueOverflow = () => {
-    if (touchedLogsQueue.length < 1 || touchedLogsQueue.length < TOUCHED_LOGS_LIMIT) return
-    
-    const newTouchedLogsQueue = [...touchedLogsQueue]
-    const oldestLogToPop = newTouchedLogsQueue.shift()
-    if (oldestLogToPop === undefined) return
-
-    setTouchedLogsTTLIntervals(_touchedLogsTTLIntervals => {
-      const newTouchedLogsTTLIntervals = new Map(_touchedLogsTTLIntervals)
-      newTouchedLogsTTLIntervals.delete(oldestLogToPop.name)
-      return newTouchedLogsTTLIntervals
+  const onLogSelect = (log: MOSDACLog) => {
+    setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+      const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+      newHistoricalLogsFetchingStatus.set(log.name, 0)
+      return newHistoricalLogsFetchingStatus
     })
-    setTouchedLogsQueue(newTouchedLogsQueue)
+    setSelectedLog(log)
+    fetchMOSDACImages(log, mode, 'log').then(() => {
+      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+        newHistoricalLogsFetchingStatus.delete(log.name)
+        return newHistoricalLogsFetchingStatus
+      })
+    })
   }
 
-  const onLogSelect = (log: MOSDACLog) => {
-    fetchMOSDACImages(log).then(() => {
-      setSelectedLog(log)
+  const onModeSelect = (mode: MOSDACImageMode) => {
+    if (!selectedLog) return
+    setModeFetchingStatus(_modeFetchingStatus => {
+      const newModeFetchingStatus = new Map(_modeFetchingStatus)
+      newModeFetchingStatus.set(mode, 0)
+      return newModeFetchingStatus
     })
-    // selectedLogName.current = log.name
+    setMode(mode)
+    fetchMOSDACImages(selectedLog, mode, 'mode').then(() => {
+      setModeFetchingStatus(_modeFetchingStatus => {
+        const newModeFetchingStatus = new Map(_modeFetchingStatus)
+        newModeFetchingStatus.delete(mode)
+        return newModeFetchingStatus
+      })
+    })
+  }
 
-    // if (touchedLogsQueue.length >= TOUCHED_LOGS_LIMIT) onTouchedLogsQueueOverflow()
+  const onWindDirectionLayerSelect = async () => {
+    if (windDirectionData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.WIND_DIRECTION, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingWindDirectionData) return
+        setIsFetchingWindDirectionData(true)
+        const response = await axios.get<MOSDACWindDirectionData>('/api/mosdac-wind-direction')
+        setIsFetchingWindDirectionData(false)
+        setWindDirectionData(toWindVelocityFormat(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.WIND_DIRECTION)
+          newLayerFetchingStatus.delete(Layer.WIND_HEATMAP)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  }
 
-    // if (touchedLogsTTLIntervals.has(log.name)) clearInterval(touchedLogsTTLIntervals.get(log.name))
+  const onWindHeatmapLayerSelect = async () => {
+    if (windDirectionData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.WIND_HEATMAP, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingWindDirectionData) return
+        setIsFetchingWindDirectionData(true)
+        const response = await axios.get<MOSDACWindDirectionData>('/api/mosdac-wind-direction')
+        setIsFetchingWindDirectionData(false)
+        setWindDirectionData(toWindVelocityFormat(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.WIND_DIRECTION)
+          newLayerFetchingStatus.delete(Layer.WIND_HEATMAP)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  }
 
-    // const interval = setInterval(() => {
-    //   if (log.name === selectedLogName.current) return
-    //   setTouchedLogsTTLIntervals(_touchedLogsTTLIntervals => {
-    //     const newTouchedLogsTTLIntervals = new Map(_touchedLogsTTLIntervals)
-    //     newTouchedLogsTTLIntervals.delete(log.name)
-    //     return newTouchedLogsTTLIntervals
-    //   })
-    //   setTouchedLogsQueue(_touchedLogsQueue => {
-    //     return _touchedLogsQueue.filter(_touchedLog => _touchedLog.name !== log.name)
-    //   })
-    //   clearInterval(interval)
-    // }, TOUCHED_LOG_TTL)
+  const onFireSmokeLayerSelect = async () => {
+    if (fireSmokeData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.FIRE_SMOKE, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingFireSmokeData) return
+        setIsFetchingFireSmokeData(true)
+        const response = await axios.get<MOSDACFireSmoke>('/api/mosdac-fire-smoke')
+        setIsFetchingFireSmokeData(false)
+        setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
+        setFireSmokeHeatmapData(
+          response.data.features
+            .map((feature, index) => toFirePoint(index, feature))
+            .map(fireSmokeDatum => [fireSmokeDatum.lat, fireSmokeDatum.lng, 0.7])
+        )
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE)
+          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE_HEATMAP)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  }
 
-    // const newTouchedLogsTTLIntervals = new Map(touchedLogsTTLIntervals)
-    // newTouchedLogsTTLIntervals.set(log.name, interval)
-    // setTouchedLogsTTLIntervals(newTouchedLogsTTLIntervals)
-
-    // if (!touchedLogsTTLIntervals.has(log.name)) setTouchedLogsQueue(_touchedLogsQueue => [..._touchedLogsQueue, log])
+  const onFireSmokeHeatmapLayerSelect = async () => {
+    if (fireSmokeHeatmapData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingFireSmokeData) return
+        setIsFetchingFireSmokeData(true)
+        const response = await axios.get<MOSDACFireSmoke>('/api/mosdac-fire-smoke')
+        setIsFetchingFireSmokeData(false)
+        setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
+        setFireSmokeHeatmapData(
+          response.data.features
+            .map((feature, index) => toFirePoint(index, feature))
+            .map(fireSmokeDatum => [fireSmokeDatum.lat, fireSmokeDatum.lng, 0.7])
+        )
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE)
+          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE_HEATMAP)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+      }
+    }
   }
 
   // Effects:
   useEffect(() => {
     getMOSDACLogData()
   }, [])
-  
-  /**
-   * Layers: [Winds, Heatmap, Both], Fire & Smoke, CLoudburst/Heavy Rain, Rip Current (Forecast), Snow, Cyclone Track
-      History: Select from log
-      Animation: Select Timerange (from log) and start animation
-      Legends: Grayscale, etc.
-   */
 
   // Return:
   return (
     <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
-      <div className='absolute right-3 top-3 z-10 flex justify-center items-center flex-col gap-2 w-42 p-3 bg-white rounded'>
-        <LayersCombobox />
-        {
-          logs.length > 0 && (
-            <HistoryCombobox
-              logs={logs}
-              selectedLog={selectedLog}
-              onSelect={onLogSelect}
-            />
-          )
-        }
+      <div className='absolute left-3 top-3 z-[1001] flex justify-center items-center flex-col gap-2 w-42 p-3 bg-white rounded-md'>
+        <LayersCombobox
+          layers={layers}
+          setLayers={setLayers}
+          layerFetchingStatus={layerFetchingStatus}
+          onWindDirectionLayerSelect={onWindDirectionLayerSelect}
+          onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
+          onFireSmokeLayerSelect={onFireSmokeLayerSelect}
+          onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
+        />
+        <HistoryCombobox
+          logs={logs}
+          selectedLog={selectedLog}
+          onSelect={onLogSelect}
+          historicalLogsFetchingStatus={historicalLogsFetchingStatus}
+        />
         <Button variant='outline' className='relative w-full cursor-pointer'>
           <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : 'bg-rose-400')} />
           Animation
         </Button>
-        <Button variant='outline' className='relative w-full cursor-pointer'>
-          {
-            legends.length > 0 && (
-              <div className='absolute -top-2 -right-2 z-10 flex justify-center items-center w-4 h-4 text-xs text-[10px] text-white bg-blue-600 rounded-full'>{legends.length}</div>
-            )
-          }
-          Legends
-        </Button>
+        <LegendsCombobox
+          selectedMode={mode}
+          onSelect={onModeSelect}
+          modeFetchingStatus={modeFetchingStatus}
+        />
+        <div className='flex flex-col gap-2.5 w-full p-2 pb-2.5 border bg-secondary rounded-md'>
+          <div className='flex items-center justify-between w-full'>
+            <span className='text-xs font-semibold'>Opacity</span>
+            <span className='text-xs font-medium'>{(opacity * 100).toFixed(0)}%</span>
+          </div>
+          <Slider
+            defaultValue={[opacity * 100]}
+            max={100}
+            step={1}
+            onValueChange={value => setOpacity(value[0] / 100)}
+          />
+        </div>
       </div>
-      <LoadScript googleMapsApiKey={process.env['NEXT_PUBLIC_GOOGLE_MAPS_KEY'] as string} libraries={LIBRARIES}>
-        <GoogleMap
-          mapContainerStyle={{
-            width: '100%',
-            height: 'calc(100% - 40px)'
-          }}
-          center={CENTER}
-          zoom={ZOOM}
-          ref={mapRef}
-          options={{
-            fullscreenControl: false,
-            zoomControl: false,
-            streetViewControl: false,
-          }}
-          clickableIcons={false}
-          onLoad={map => setMapInstance(map)}
-          onDrag={() => {
-            if (mapRef.current) {
-              const map = mapRef.current.state.map
-              if (map) {
-                const center = map.getCenter()
-                const zoom = map.getZoom()
-                setCurrentCenter({ lat: center?.lat() ?? CENTER.lat, lng: center?.lng() ?? CENTER.lng })
-                setCurrentZoom(zoom ?? ZOOM)
-              }
-            }
-          }}
-          onZoomChanged={() => {
-            if (mapRef.current) {
-              const map = mapRef.current.state.map
-              if (map) {
-                const center = map.getCenter()
-                const zoom = map.getZoom()
-                setCurrentCenter({ lat: center?.lat() ?? CENTER.lat, lng: center?.lng() ?? CENTER.lng })
-                setCurrentZoom(zoom ?? ZOOM)
-              }
-            }
-          }}
-        >
-          {
-            selectedLog !== null && BOXES.map((boxRow, index) => (
-              <React.Fragment key={index}>
-                {
-                  boxRow.map(box => (
-                    <GroundOverlay
-                      key={box.bbox + mode + selectedLog.when.formatted + (images.has(box.bbox + mode + selectedLog.when.formatted) ? 'A' : 'I')}
-                      bounds={box.bounds}
-                      url={images.get(box.bbox + mode + selectedLog.when.formatted)!}
-                      opacity={opacity}
-                      options={{
-                        opacity: opacity,
-                      }}
-                    />
-                  ))
-                }
-              </React.Fragment>
-            ))
-          }
-          {/* {
-            touchedLogsQueue.map(touchedLog => (
-              <React.Fragment key={`outer-${touchedLog.name}`}>
-                {
-                  BOXES.map((boxRow, index) => (
-                    <React.Fragment key={index}>
-                      {
-                        boxRow.map(box => (
-                          <GroundOverlayF
-                            key={
-                              box.bbox +
-                              mode +
-                              touchedLog.when.formatted +
-                              (images.has(box.bbox + mode + touchedLog.when.formatted) ? 'IMAGE_LOADED' : 'IMAGE_LOADING') +
-                              (selectedLog?.name === touchedLog.name ? 'SELECTED' : 'HIDDEN')
-                            }
-                            bounds={box.bounds}
-                            url={images.get(box.bbox + mode + touchedLog.when.formatted)!}
-                            options={{
-                              opacity: selectedLog?.name === touchedLog.name ? opacity : 0,
-                            }}
-                          />
-                        ))
-                      }
-                    </React.Fragment>
-                  ))
-                }
-              </React.Fragment>
-            ))
-          } */}
-        </GoogleMap>
-      </LoadScript>
+      <LeafletMap
+        images={images}
+        mode={mode}
+        opacity={opacity}
+        selectedLog={selectedLog}
+        layers={layers}
+        windDirectionData={windDirectionData}
+        fireSmokeData={fireSmokeData}
+        fireSmokeHeatmapData={fireSmokeHeatmapData}
+      />
       <Footer />
     </div>
   )
 }
 
 // Exports:
-export default Home
+export default Leaflet
