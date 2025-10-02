@@ -1,5 +1,5 @@
 // Typescript:
-import type { MOSDACFireSmokeFeature } from '@/pages/api/mosdac-fire-smoke'
+import type { MOSDACFireSmokeFeature } from '@/pages/api/fire-smoke'
 
 // Exports:
 export interface FirePoint {

@@ -14,10 +14,14 @@ const geistSans = Geist({
   subsets: ['latin'],
 })
 
+// Components:
+import { Toaster } from '@/components/ui/sonner'
+
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
   <main className={`${geistSans.className} font-sans`}>
     <Component {...pageProps} />
+    <Toaster />
   </main>
 )
 

@@ -7,7 +7,7 @@ import L from 'leaflet'
 import 'leaflet.heat'
 
 // Typescript:
-import type { MOSDACWindParameterData } from '@/pages/api/mosdac-wind-direction'
+import type { MOSDACWindParameterData } from '@/pages/api/wind-direction'
 
 interface WindHeatmapLayerProps {
   data: [MOSDACWindParameterData, MOSDACWindParameterData]

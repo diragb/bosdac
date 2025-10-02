@@ -6,11 +6,12 @@ import { MapContainer, TileLayer, ImageOverlay, useMapEvents } from 'react-leafl
 import dynamic from 'next/dynamic'
 
 // Typescript:
-import type { MOSDACLog } from '../pages/api/mosdac-log'
-import { MOSDACImageMode } from '../pages/api/mosdac'
+import type { MOSDACLog } from '../pages/api/log'
+import { MOSDACImageMode } from '../pages/api/history'
 import { Layer } from './LayersCombobox'
 import type { FirePoint } from '@/lib/toFirePoint'
 import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
+import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
 
 // Assets:
 import 'leaflet-velocity/dist/leaflet-velocity.css'
@@ -27,6 +28,9 @@ const WindLayer = dynamic(() => import('../components/WindLayer'), { ssr: false 
 const WindHeatmapLayer = dynamic(() => import('../components/WindHeatmapLayer'), { ssr: false })
 const FireSmokeLayer = dynamic(() => import('../components/FireSmokeLayer'), { ssr: false })
 const FireSmokeHeatmapLayer = dynamic(() => import('../components/FireSmokeHeatmapLayer'), { ssr: false })
+const HeavyRainLayer = dynamic(() => import('../components/HeavyRainLayer'), { ssr: false })
+const HeavyRainForecastLayer = dynamic(() => import('../components/HeavyRainForecastLayer'), { ssr: false })
+const CloudburstForecastLayer = dynamic(() => import('../components/CloudburstForecastLayer'), { ssr: false })
 
 // Functions:
 const DragWatcher = ({
@@ -50,6 +54,7 @@ const LeafletMap = ({
   windDirectionData,
   fireSmokeData,
   fireSmokeHeatmapData,
+  cloudburstHeavyRainData,
 }: {
   images: Map<string, string>
   selectedLog: MOSDACLog | null
@@ -59,6 +64,7 @@ const LeafletMap = ({
   windDirectionData: MOSDACWindVelocity | null
   fireSmokeData: FirePoint[] | null
   fireSmokeHeatmapData: HeatLatLngTuple[] | null
+  cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
 }) => {
   // State:
   const [isDragging, setIsDragging] = useState(false)
@@ -149,6 +155,21 @@ const LeafletMap = ({
       {
         (layers.includes(Layer.FIRE_SMOKE_HEATMAP) && fireSmokeHeatmapData !== null) && (
           <FireSmokeHeatmapLayer data={fireSmokeHeatmapData} />
+        )
+      }
+      {
+        (layers.includes(Layer.HEAVY_RAIN) && cloudburstHeavyRainData !== null) && (
+          <HeavyRainLayer data={cloudburstHeavyRainData.heavyRainPoints} />
+        )
+      }
+      {
+        (layers.includes(Layer.HEAVY_RAIN_FORECAST) && cloudburstHeavyRainData !== null) && (
+          <HeavyRainForecastLayer data={cloudburstHeavyRainData.heavyRainForecastPoints} />
+        )
+      }
+      {
+        (layers.includes(Layer.CLOUDBURST_FORECAST) && cloudburstHeavyRainData !== null) && (
+          <CloudburstForecastLayer data={cloudburstHeavyRainData.cloudburstPoints} />
         )
       }
     </MapContainer>

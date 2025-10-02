@@ -6,14 +6,22 @@ import { cn } from '@/lib/utils'
 import localforage from 'localforage'
 import toFirePoint from '@/lib/toFirePoint'
 import toWindVelocityFormat from '@/lib/toWindVelocityFormat'
+import { toast } from 'sonner'
+import processCloudburstHeavyRain from '@/lib/processCloudburstHeavyRain'
 
 // Typescript:
-import type { MOSDACWindDirectionData } from './api/mosdac-wind-direction'
-import type { MOSDACLogData, MOSDACLog } from './api/mosdac-log'
-import { MOSDACImageMode } from './api/mosdac'
+import type { MOSDACWindDirectionData } from './api/wind-direction'
+import type { MOSDACLogData, MOSDACLog } from './api/log'
+import { MOSDACImageMode } from './api/history'
 import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
-import type { MOSDACFireSmoke } from './api/mosdac-fire-smoke'
+import type { MOSDACFireSmoke } from './api/fire-smoke'
 import type { FirePoint } from '@/lib/toFirePoint'
+import type { HeatLatLngTuple } from 'leaflet'
+import type { MOSDACCloudburstAndHeavyRain } from './api/cloudburst-and-heavy-rain'
+import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
+
+// Assets:
+import { FrownIcon } from 'lucide-react'
 
 // Classes:
 class Box {
@@ -81,7 +89,6 @@ import HistoryCombobox from '@/components/HistoryCombobox'
 import LegendsCombobox from '@/components/ModesCombobox'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import { Slider } from '@/components/ui/slider'
-import { HeatLatLngTuple } from 'leaflet'
 
 // Functions:
 const Leaflet = () => {
@@ -92,14 +99,16 @@ const Leaflet = () => {
   const [fireSmokeData, setFireSmokeData] = useState<FirePoint[] | null>(null)
   const [isFetchingFireSmokeData, setIsFetchingFireSmokeData] = useState(false)
   const [fireSmokeHeatmapData, setFireSmokeHeatmapData] = useState<HeatLatLngTuple[] | null>(null)
+  const [isFetchingCloudburstHeavyRainData, setIsFetchingCloudburstHeavyRainData] = useState(false)
+  const [cloudburstHeavyRainData, setCloudburstHeavyRainData] = useState<CloudburstHeavyRainProcessedData | null>(null)
   const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [isFetchingImages, setIsFetchingImages] = useState(false)
-  const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number>>(new Map())
+  const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number | boolean>>(new Map())
   const [logs, setLogs] = useState<MOSDACLogData>([])
   const [selectedLog, setSelectedLog] = useState<MOSDACLog | null>(null)
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
-  const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number>>(new Map())
+  const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number | boolean>>(new Map())
   const [opacity, setOpacity] = useState(0.85)
   const [isAnimationOn, setIsAnimationOn] = useState(false)
 
@@ -137,7 +146,7 @@ const Leaflet = () => {
 
   const getMOSDACLogData = async () => {
     try {
-      const { data } = await axios.get('/api/mosdac-log')
+      const { data } = await axios.get('/api/log')
       if (Array.isArray(data)) {
         const sortedLogs = sortLogs(data)
         setLogs(sortedLogs)
@@ -151,7 +160,7 @@ const Leaflet = () => {
   }
 
   const getMOSDACImageURL = (box: Box, log: MOSDACLog, mode: MOSDACImageMode) => {
-    return `/api/mosdac?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
+    return `/api/history?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
   }
 
   const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log') => {
@@ -227,37 +236,77 @@ const Leaflet = () => {
     }
   }
 
-  const onLogSelect = (log: MOSDACLog) => {
-    setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-      const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-      newHistoricalLogsFetchingStatus.set(log.name, 0)
-      return newHistoricalLogsFetchingStatus
-    })
-    setSelectedLog(log)
-    fetchMOSDACImages(log, mode, 'log').then(() => {
+  const onLogSelect = async (log: MOSDACLog) => {
+    let previousLog = selectedLog
+    try {
+      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+        newHistoricalLogsFetchingStatus.set(log.name, 0)
+        return newHistoricalLogsFetchingStatus
+      })
+      setSelectedLog(log)
+      await fetchMOSDACImages(log, mode, 'log')
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
         newHistoricalLogsFetchingStatus.delete(log.name)
         return newHistoricalLogsFetchingStatus
       })
-    })
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        'We\'re not able to load data for this log at the moment. Sorry!',
+        {
+          position: 'top-right',
+          icon: <FrownIcon className='size-4' />,
+          style: {
+            width: 'max-content',
+          }
+        }
+      )
+      setSelectedLog(previousLog)
+      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+        newHistoricalLogsFetchingStatus.set(log.name, false)
+        return newHistoricalLogsFetchingStatus
+      })
+    }
   }
 
-  const onModeSelect = (mode: MOSDACImageMode) => {
-    if (!selectedLog) return
-    setModeFetchingStatus(_modeFetchingStatus => {
-      const newModeFetchingStatus = new Map(_modeFetchingStatus)
-      newModeFetchingStatus.set(mode, 0)
-      return newModeFetchingStatus
-    })
-    setMode(mode)
-    fetchMOSDACImages(selectedLog, mode, 'mode').then(() => {
+  const onModeSelect = async (newMode: MOSDACImageMode) => {
+    let previousMode = mode
+    try {
+      if (!selectedLog) return
       setModeFetchingStatus(_modeFetchingStatus => {
         const newModeFetchingStatus = new Map(_modeFetchingStatus)
-        newModeFetchingStatus.delete(mode)
+        newModeFetchingStatus.set(newMode, 0)
         return newModeFetchingStatus
       })
-    })
+      setMode(newMode)
+      await fetchMOSDACImages(selectedLog, newMode, 'mode')
+      setModeFetchingStatus(_modeFetchingStatus => {
+        const newModeFetchingStatus = new Map(_modeFetchingStatus)
+        newModeFetchingStatus.delete(newMode)
+        return newModeFetchingStatus
+      })
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        'We\'re not able to load data for this mode at the moment. Sorry!',
+        {
+          position: 'top-right',
+          icon: <FrownIcon className='size-4' />,
+          style: {
+            width: 'max-content',
+          }
+        }
+      )
+      setMode(previousMode)
+      setModeFetchingStatus(_modeFetchingStatus => {
+        const newModeFetchingStatus = new Map(_modeFetchingStatus)
+        newModeFetchingStatus.set(newMode, false)
+        return newModeFetchingStatus
+      })
+    }
   }
 
   const onWindDirectionLayerSelect = async () => {
@@ -270,8 +319,7 @@ const Leaflet = () => {
         })
         if (isFetchingWindDirectionData) return
         setIsFetchingWindDirectionData(true)
-        const response = await axios.get<MOSDACWindDirectionData>('/api/mosdac-wind-direction')
-        setIsFetchingWindDirectionData(false)
+        const response = await axios.get<MOSDACWindDirectionData>('/api/wind-direction')
         setWindDirectionData(toWindVelocityFormat(response.data))
         setLayerFetchingStatus(_layerFetchingStatus => {
           const newLayerFetchingStatus = new Map(_layerFetchingStatus)
@@ -281,6 +329,25 @@ const Leaflet = () => {
         })
       } catch (error) {
         console.error(error)
+        toast.error(
+          'We\'re not able to load data for wind at the moment. Sorry!',
+          {
+            position: 'top-right',
+            icon: <FrownIcon className='size-4' />,
+            style: {
+              width: 'max-content',
+            }
+          }
+        )
+        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.WIND_DIRECTION && layerID !== Layer.WIND_HEATMAP)))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.WIND_DIRECTION)) newLayerFetchingStatus.set(Layer.WIND_DIRECTION, false)
+          if (newLayerFetchingStatus.get(Layer.WIND_HEATMAP)) newLayerFetchingStatus.set(Layer.WIND_HEATMAP, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingWindDirectionData(false)
       }
     }
   }
@@ -295,8 +362,7 @@ const Leaflet = () => {
         })
         if (isFetchingWindDirectionData) return
         setIsFetchingWindDirectionData(true)
-        const response = await axios.get<MOSDACWindDirectionData>('/api/mosdac-wind-direction')
-        setIsFetchingWindDirectionData(false)
+        const response = await axios.get<MOSDACWindDirectionData>('/api/wind-direction')
         setWindDirectionData(toWindVelocityFormat(response.data))
         setLayerFetchingStatus(_layerFetchingStatus => {
           const newLayerFetchingStatus = new Map(_layerFetchingStatus)
@@ -306,6 +372,25 @@ const Leaflet = () => {
         })
       } catch (error) {
         console.error(error)
+        toast.error(
+          'We\'re not able to load data for wind at the moment. Sorry!',
+          {
+            position: 'top-right',
+            icon: <FrownIcon className='size-4' />,
+            style: {
+              width: 'max-content',
+            }
+          }
+        )
+        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.WIND_DIRECTION && layerID !== Layer.WIND_HEATMAP)))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.WIND_DIRECTION)) newLayerFetchingStatus.set(Layer.WIND_DIRECTION, false)
+          if (newLayerFetchingStatus.get(Layer.WIND_HEATMAP)) newLayerFetchingStatus.set(Layer.WIND_HEATMAP, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingWindDirectionData(false)
       }
     }
   }
@@ -320,8 +405,7 @@ const Leaflet = () => {
         })
         if (isFetchingFireSmokeData) return
         setIsFetchingFireSmokeData(true)
-        const response = await axios.get<MOSDACFireSmoke>('/api/mosdac-fire-smoke')
-        setIsFetchingFireSmokeData(false)
+        const response = await axios.get<MOSDACFireSmoke>('/api/fire-smoke')
         setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
         setFireSmokeHeatmapData(
           response.data.features
@@ -336,6 +420,25 @@ const Leaflet = () => {
         })
       } catch (error) {
         console.error(error)
+        toast.error(
+          'We\'re not able to load data for fire & smoke at the moment. Sorry!',
+          {
+            position: 'top-right',
+            icon: <FrownIcon className='size-4' />,
+            style: {
+              width: 'max-content',
+            }
+          }
+        )
+        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.FIRE_SMOKE && layerID !== Layer.FIRE_SMOKE_HEATMAP)))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE, false)
+          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE_HEATMAP)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingFireSmokeData(false)
       }
     }
   }
@@ -350,8 +453,7 @@ const Leaflet = () => {
         })
         if (isFetchingFireSmokeData) return
         setIsFetchingFireSmokeData(true)
-        const response = await axios.get<MOSDACFireSmoke>('/api/mosdac-fire-smoke')
-        setIsFetchingFireSmokeData(false)
+        const response = await axios.get<MOSDACFireSmoke>('/api/fire-smoke')
         setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
         setFireSmokeHeatmapData(
           response.data.features
@@ -366,6 +468,172 @@ const Leaflet = () => {
         })
       } catch (error) {
         console.error(error)
+        toast.error(
+          'We\'re not able to load data for fire & smoke at the moment. Sorry!',
+          {
+            position: 'top-right',
+            icon: <FrownIcon className='size-4' />,
+            style: {
+              width: 'max-content',
+            }
+          }
+        )
+        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.FIRE_SMOKE && layerID !== Layer.FIRE_SMOKE_HEATMAP)))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE, false)
+          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE_HEATMAP)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingFireSmokeData(false)
+      }
+    }
+  }
+
+  const onHeavyRainLayerSelect = async () => {
+    if (cloudburstHeavyRainData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.HEAVY_RAIN, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingCloudburstHeavyRainData) return
+        setIsFetchingCloudburstHeavyRainData(true)
+        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
+        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
+          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+          toast.error(
+            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
+            {
+              position: 'top-right',
+              icon: <FrownIcon className='size-4' />,
+              style: {
+                width: 'max-content',
+              }
+            }
+          )
+        setLayers(_layers => _layers.filter(layerID => (
+          layerID !== Layer.HEAVY_RAIN &&
+          layerID !== Layer.HEAVY_RAIN_FORECAST &&
+          layerID !== Layer.CLOUDBURST_FORECAST
+        )))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
+          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingCloudburstHeavyRainData(false)
+      }
+    }
+  }
+
+  const onHeavyRainForecastLayerSelect = async () => {
+    if (cloudburstHeavyRainData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingCloudburstHeavyRainData) return
+        setIsFetchingCloudburstHeavyRainData(true)
+        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
+        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
+          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+          toast.error(
+            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
+            {
+              position: 'top-right',
+              icon: <FrownIcon className='size-4' />,
+              style: {
+                width: 'max-content',
+              }
+            }
+          )
+        setLayers(_layers => _layers.filter(layerID => (
+          layerID !== Layer.HEAVY_RAIN &&
+          layerID !== Layer.HEAVY_RAIN_FORECAST &&
+          layerID !== Layer.CLOUDBURST_FORECAST
+        )))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
+          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingCloudburstHeavyRainData(false)
+      }
+    }
+  }
+
+  const onCloudburstForecastLayerSelect = async () => {
+    if (cloudburstHeavyRainData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingCloudburstHeavyRainData) return
+        setIsFetchingCloudburstHeavyRainData(true)
+        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
+        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
+          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
+          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+          toast.error(
+            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
+            {
+              position: 'top-right',
+              icon: <FrownIcon className='size-4' />,
+              style: {
+                width: 'max-content',
+              }
+            }
+          )
+        setLayers(_layers => _layers.filter(layerID => (
+          layerID !== Layer.HEAVY_RAIN &&
+          layerID !== Layer.HEAVY_RAIN_FORECAST &&
+          layerID !== Layer.CLOUDBURST_FORECAST
+        )))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
+          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
+          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingCloudburstHeavyRainData(false)
       }
     }
   }
@@ -387,6 +655,9 @@ const Leaflet = () => {
           onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
           onFireSmokeLayerSelect={onFireSmokeLayerSelect}
           onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
+          onHeavyRainLayerSelect={onHeavyRainLayerSelect}
+          onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
+          onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
         />
         <HistoryCombobox
           logs={logs}
@@ -425,6 +696,7 @@ const Leaflet = () => {
         windDirectionData={windDirectionData}
         fireSmokeData={fireSmokeData}
         fireSmokeHeatmapData={fireSmokeHeatmapData}
+        cloudburstHeavyRainData={cloudburstHeavyRainData}
       />
       <Footer />
     </div>

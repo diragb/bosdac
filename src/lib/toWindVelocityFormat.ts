@@ -1,5 +1,5 @@
 // Typescript:
-import type { MOSDACWindDirectionData, MOSDACWindParameterData } from '@/pages/api/mosdac-wind-direction'
+import type { MOSDACWindDirectionData, MOSDACWindParameterData } from '@/pages/api/wind-direction'
 
 // Exports:
 export interface WindLayerProps {

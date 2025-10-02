@@ -9,14 +9,30 @@ export enum Layer {
   WIND_HEATMAP = 'WIND_HEATMAP',
   FIRE_SMOKE = 'FIRE_SMOKE',
   FIRE_SMOKE_HEATMAP = 'FIRE_SMOKE_HEATMAP',
-  CLOUDBURST_HEAVY_RAIN = 'CLOUDBURST_HEAVY_RAIN',
+  HEAVY_RAIN = 'HEAVY_RAIN',
+  HEAVY_RAIN_FORECAST = 'HEAVY_RAIN_FORECAST',
+  CLOUDBURST_FORECAST = 'CLOUDBURST_FORECAST',
   RIP_CURRENT_FORECAST = 'RIP_CURRENT_FORECAST',
   SNOW = 'SNOW',
   CYCLONE_TRACK = 'CYCLONE_TRACK',
 }
 
 // Assets:
-import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FlameKindlingIcon, Loader2Icon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
+import {
+  BrickWallFireIcon,
+  CheckIcon,
+  CloudAlertIcon,
+  CloudRainIcon,
+  CloudRainWindIcon,
+  FlameIcon,
+  FlameKindlingIcon,
+  FrownIcon,
+  Loader2Icon,
+  ShellIcon,
+  SnowflakeIcon,
+  WavesIcon,
+  WindIcon,
+} from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -47,6 +63,9 @@ const LayersCombobox = ({
   onWindHeatmapLayerSelect,
   onFireSmokeLayerSelect,
   onFireSmokeHeatmapLayerSelect,
+  onHeavyRainLayerSelect,
+  onHeavyRainForecastLayerSelect,
+  onCloudburstForecastLayerSelect,
 }: {
   layers: Layer[]
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
@@ -55,6 +74,9 @@ const LayersCombobox = ({
   onWindHeatmapLayerSelect: () => void
   onFireSmokeLayerSelect: () => void
   onFireSmokeHeatmapLayerSelect: () => void
+  onHeavyRainLayerSelect: () => void
+  onHeavyRainForecastLayerSelect: () => void
+  onCloudburstForecastLayerSelect: () => void
 }) => {
   // Memo:
   const LAYERS = useMemo(() => [
@@ -62,8 +84,10 @@ const LayersCombobox = ({
     { id: Layer.WIND_HEATMAP, icon: <BrickWallFireIcon className='text-inherit transition-all' />, name: 'Wind Heatmap' },
     { id: Layer.FIRE_SMOKE, icon: <FlameIcon className='text-inherit transition-all' />, name: 'Fire & Smoke' },
     { id: Layer.FIRE_SMOKE_HEATMAP, icon: <FlameKindlingIcon className='text-inherit transition-all' />, name: 'Fire & Smoke Heatmap' },
-    { id: Layer.CLOUDBURST_HEAVY_RAIN, icon: <CloudHailIcon className='text-inherit transition-all' />, name: 'Cloudburst/Heavy Rain' },
-    { id: Layer.RIP_CURRENT_FORECAST, icon: <WavesIcon className='text-inherit transition-all' />, name: 'Rip Current (Forecast)' },
+    { id: Layer.HEAVY_RAIN, icon: <CloudRainIcon className='text-inherit transition-all' />, name: 'Heavy Rain' },
+    { id: Layer.HEAVY_RAIN_FORECAST, icon: <CloudRainWindIcon className='text-inherit transition-all' />, name: 'Heavy Rain Forecast' },
+    { id: Layer.CLOUDBURST_FORECAST, icon: <CloudAlertIcon className='text-inherit transition-all' />, name: 'Cloudburst Forecast' },
+    { id: Layer.RIP_CURRENT_FORECAST, icon: <WavesIcon className='text-inherit transition-all' />, name: 'Rip Current Forecast' },
     { id: Layer.SNOW, icon: <SnowflakeIcon className='text-inherit transition-all' />, name: 'Snow' },
     { id: Layer.CYCLONE_TRACK, icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
   ], [])
@@ -111,6 +135,15 @@ const LayersCombobox = ({
                         case Layer.FIRE_SMOKE_HEATMAP:
                           onFireSmokeHeatmapLayerSelect()
                           break
+                        case Layer.HEAVY_RAIN:
+                          onHeavyRainLayerSelect()
+                          break
+                        case Layer.HEAVY_RAIN:
+                          onHeavyRainForecastLayerSelect()
+                          break
+                        case Layer.HEAVY_RAIN:
+                          onCloudburstForecastLayerSelect()
+                          break
                         default:
                           break
                       }
@@ -126,7 +159,17 @@ const LayersCombobox = ({
                   </div>
                   {
                     layerFetchingStatus.has(layer.id) ? (
-                      <Loader2Icon className='size-3 animate-spin' />
+                      <>
+                        {
+                          layerFetchingStatus.get(layer.id) ? (
+                            <Loader2Icon className='size-3 animate-spin' />
+                          ) : (
+                            <span title='Something went wrong..'>
+                              <FrownIcon className='size-3 text-rose-500' />
+                            </span>
+                          )
+                        }
+                      </>
                     ) : (
                       <CheckIcon
                         className={cn(

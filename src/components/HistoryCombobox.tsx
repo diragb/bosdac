@@ -4,10 +4,10 @@ import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 
 // Typescript:
-import type { MOSDACLog, MOSDACLogData } from '@/pages/api/mosdac-log'
+import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
 
 // Assets:
-import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, Loader2Icon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
+import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FrownIcon, Loader2Icon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -40,7 +40,7 @@ const HistoryCombobox = ({
   logs: MOSDACLogData
   selectedLog: MOSDACLog | null
   onSelect: (selectedLog: MOSDACLog) => void
-  historicalLogsFetchingStatus: Map<string, number>
+  historicalLogsFetchingStatus: Map<string, number | boolean>
 }) => {
   // Memo:
   const localTimezoneOffset = useMemo(() => {
@@ -140,10 +140,20 @@ const HistoryCombobox = ({
                     </div>
                     {
                       historicalLogsFetchingStatus.has(log.name) ? (
-                        <div className='flex items-center justify-center gap-1'>
-                          <span className='text-xs font-medium'>{((historicalLogsFetchingStatus.get(log.name) ?? 0) * 100).toFixed(0)}%</span>
-                          <Loader2Icon className='size-3 animate-spin' />
-                        </div>
+                        <>
+                          {
+                            historicalLogsFetchingStatus.get(log.name) === false ? (
+                              <span title='Something went wrong..'>
+                                <FrownIcon className='size-3 text-rose-500' />
+                              </span>
+                            ) : (
+                              <div className='flex items-center justify-center gap-1'>
+                                <span className='text-xs font-medium'>{(((historicalLogsFetchingStatus.get(log.name) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
+                                <Loader2Icon className='size-3 animate-spin' />
+                              </div>
+                            )
+                          }
+                        </>
                       ) : (
                         <CheckIcon
                           className={cn(

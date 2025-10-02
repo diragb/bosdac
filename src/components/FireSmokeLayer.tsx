@@ -26,8 +26,8 @@ const _FlameIcon = new L.DivIcon({
 
 const FireSmokeLayer = ({ data }: { data: FirePoint[] }) => (
   <LayerGroup>
-    {data.map(p => (
-      <Marker key={p.id} position={{ lat: p.lat, lng: p.lng }} icon={_FlameIcon} />
+    {data.map(datum => (
+      <Marker key={datum.id} position={{ lat: datum.lat, lng: datum.lng }} icon={_FlameIcon} />
     ))}
   </LayerGroup>
 )

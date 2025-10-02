@@ -4,10 +4,10 @@ import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 
 // Typescript:
-import { MOSDACImageMode } from '@/pages/api/mosdac'
+import { MOSDACImageMode } from '@/pages/api/history'
 
 // Assets:
-import { CheckIcon, Loader2Icon } from 'lucide-react'
+import { CheckIcon, FrownIcon, Loader2Icon } from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -37,7 +37,7 @@ const ModeCombobox = ({
 }: {
   selectedMode: MOSDACImageMode
   onSelect: (mode: MOSDACImageMode) => void
-  modeFetchingStatus: Map<string, number>
+  modeFetchingStatus: Map<string, number | boolean>
 }) => {
   // Memo:
   const MODES = useMemo(() => [
@@ -92,10 +92,20 @@ const ModeCombobox = ({
                   </div>
                   {
                       modeFetchingStatus.has(mode.id) ? (
-                        <div className='flex items-center justify-center gap-1'>
-                          <span className='text-xs font-medium'>{((modeFetchingStatus.get(mode.id) ?? 0) * 100).toFixed(0)}%</span>
-                          <Loader2Icon className='size-3 animate-spin' />
-                        </div>
+                        <>
+                          {
+                            modeFetchingStatus.get(mode.id) === false ? (
+                              <span title='Something went wrong..'>
+                                <FrownIcon className='size-3 text-rose-500' />
+                              </span>
+                            ) : (
+                              <div className='flex items-center justify-center gap-1'>
+                                <span className='text-xs font-medium'>{(((modeFetchingStatus.get(mode.id) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
+                                <Loader2Icon className='size-3 animate-spin' />
+                              </div>
+                            )
+                          }
+                        </>
                       ) : (
                         <CheckIcon
                           className={cn(
