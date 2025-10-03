@@ -12,6 +12,7 @@ import { Layer } from './LayersCombobox'
 import type { FirePoint } from '@/lib/toFirePoint'
 import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
 import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
+import type { MOSDACSnowInfo } from '@/pages/api/snow-info'
 
 // Assets:
 import 'leaflet-velocity/dist/leaflet-velocity.css'
@@ -56,6 +57,8 @@ const LeafletMap = ({
   fireSmokeHeatmapData,
   cloudburstHeavyRainData,
   ripCurrentForecastData,
+  snowInfo,
+  snowImages,
 }: {
   images: Map<string, string>
   selectedLog: MOSDACLog | null
@@ -67,6 +70,8 @@ const LeafletMap = ({
   fireSmokeHeatmapData: HeatLatLngTuple[] | null
   cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
   ripCurrentForecastData: string | null
+  snowInfo: MOSDACSnowInfo | null
+  snowImages: Map<string, string>
 }) => {
   // State:
   const [isDragging, setIsDragging] = useState(false)
@@ -186,6 +191,29 @@ const LeafletMap = ({
             url={ripCurrentForecastData}
           />
         )
+      }
+      {
+        (layers.includes(Layer.SNOW) && selectedLog !== null && snowInfo !== null) && BOXES.map((boxRow, index) => (
+          <React.Fragment key={index}>
+            {
+              boxRow.map(box => {
+                const url = snowImages.get(box.bbox + mode + snowInfo.time + snowInfo.date + snowInfo.month + snowInfo.year + 'SNOW')
+                if (!url) return null
+
+                return (
+                  <ImageOverlay
+                    key={box.bbox}
+                    bounds={[
+                      [box.bounds.south, box.bounds.west],
+                      [box.bounds.north, box.bounds.east]
+                    ]}
+                    url={url}
+                  />
+                )
+              })
+            }
+          </React.Fragment>
+        ))
       }
     </MapContainer>
   )

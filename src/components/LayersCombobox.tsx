@@ -68,6 +68,7 @@ const LayersCombobox = ({
   onHeavyRainForecastLayerSelect,
   onCloudburstForecastLayerSelect,
   onRipCurrentForecastLayerSelect,
+  onSnowLayerSelect,
 }: {
   layers: Layer[]
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
@@ -80,6 +81,7 @@ const LayersCombobox = ({
   onHeavyRainForecastLayerSelect: () => void
   onCloudburstForecastLayerSelect: () => void
   onRipCurrentForecastLayerSelect: () => void
+  onSnowLayerSelect: () => void
 }) => {
   // Memo:
   const LAYERS = useMemo(() => [
@@ -92,11 +94,51 @@ const LayersCombobox = ({
     { id: Layer.CLOUDBURST_FORECAST, icon: <CloudAlertIcon className='text-inherit transition-all' />, name: 'Cloudburst Forecast' },
     { id: Layer.RIP_CURRENT_FORECAST, icon: <WavesIcon className='text-inherit transition-all' />, name: 'Rip Current Forecast' },
     { id: Layer.SNOW, icon: <SnowflakeIcon className='text-inherit transition-all' />, name: 'Snow' },
-    { id: Layer.CYCLONE_TRACK, icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
+    // { id: Layer.CYCLONE_TRACK, icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
   ], [])
 
   // State:
   const [layersPopoverOpen, setLayersPopoverOpen] = useState(false)
+
+  // Functions:
+  const onLayerSelect = (currentValue: string, layer: typeof LAYERS[number]) => {
+    if (layers.includes(currentValue as Layer)) {
+      setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
+    } else {
+      setLayers(_layers => [...layers, layer.id])
+
+      switch (layer.id) {
+        case Layer.WIND_DIRECTION:
+          onWindDirectionLayerSelect()
+          break
+        case Layer.WIND_HEATMAP:
+          onWindHeatmapLayerSelect()
+          break
+        case Layer.FIRE_SMOKE:
+          onFireSmokeLayerSelect()
+          break
+        case Layer.FIRE_SMOKE_HEATMAP:
+          onFireSmokeHeatmapLayerSelect()
+          break
+        case Layer.HEAVY_RAIN:
+          onHeavyRainLayerSelect()
+          break
+        case Layer.HEAVY_RAIN_FORECAST:
+          onHeavyRainForecastLayerSelect()
+          break
+        case Layer.CLOUDBURST_FORECAST:
+          onCloudburstForecastLayerSelect()
+        case Layer.RIP_CURRENT_FORECAST:
+          onRipCurrentForecastLayerSelect()
+          break
+        case Layer.SNOW:
+          onSnowLayerSelect()
+          break
+        default:
+          break
+      }
+    }
+  }
 
   // Return:
   return (
@@ -120,41 +162,7 @@ const LayersCombobox = ({
                   <CommandItem
                     key={layer.id}
                     value={layer.id}
-                    onSelect={currentValue => {
-                      if (layers.includes(currentValue as Layer)) {
-                        setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
-                      } else {
-                        setLayers(_layers => [...layers, layer.id])
-
-                        switch (layer.id) {
-                          case Layer.WIND_DIRECTION:
-                            onWindDirectionLayerSelect()
-                            break
-                          case Layer.WIND_HEATMAP:
-                            onWindHeatmapLayerSelect()
-                            break
-                          case Layer.FIRE_SMOKE:
-                            onFireSmokeLayerSelect()
-                            break
-                          case Layer.FIRE_SMOKE_HEATMAP:
-                            onFireSmokeHeatmapLayerSelect()
-                            break
-                          case Layer.HEAVY_RAIN:
-                            onHeavyRainLayerSelect()
-                            break
-                          case Layer.HEAVY_RAIN_FORECAST:
-                            onHeavyRainForecastLayerSelect()
-                            break
-                          case Layer.CLOUDBURST_FORECAST:
-                            onCloudburstForecastLayerSelect()
-                          case Layer.RIP_CURRENT_FORECAST:
-                            onRipCurrentForecastLayerSelect()
-                            break
-                          default:
-                            break
-                        }
-                      }
-                    }}
+                    onSelect={value => onLayerSelect(value, layer)}
                     className='justify-between cursor-pointer'
                   >
                     <div className={cn('flex justify-center items-center gap-2 transition-all', layers.includes(layer.id) && 'text-blue-500')}>

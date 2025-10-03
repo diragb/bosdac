@@ -19,6 +19,7 @@ import type { FirePoint } from '@/lib/toFirePoint'
 import type { HeatLatLngTuple } from 'leaflet'
 import type { MOSDACCloudburstAndHeavyRain } from './api/cloudburst-and-heavy-rain'
 import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
+import type { MOSDACSnowInfo } from './api/snow-info'
 
 // Assets:
 import { FrownIcon } from 'lucide-react'
@@ -103,6 +104,10 @@ const Leaflet = () => {
   const [cloudburstHeavyRainData, setCloudburstHeavyRainData] = useState<CloudburstHeavyRainProcessedData | null>(null)
   const [isFetchingRipCurrentForecastData, setIsFetchingRipCurrentForecastData] = useState(false)
   const [ripCurrentForecastData, setRipCurrentForecastData] = useState<string | null>(null)
+  const [isFetchingSnowImages, setIsFetchingSnowImages] = useState(false)
+  const [snowLayerFetchingStatus, setSnowLayerFetchingStatus] = useState<number | boolean>(0)
+  const [snowInfo, setSnowInfo] = useState<MOSDACSnowInfo | null>(null)
+  const [snowImages, setSnowImages] = useState<Map<string, string>>(new Map())
   const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [isFetchingImages, setIsFetchingImages] = useState(false)
@@ -684,6 +689,125 @@ const Leaflet = () => {
     }
   }
 
+  const getMOSDACSnowImageURL = (box: Box, _snowInfo: MOSDACSnowInfo) => {
+    return `/api/snow?bbox=${box.bbox}&time=${_snowInfo.time}&date=${_snowInfo.date}&month=${_snowInfo.month}&year=${_snowInfo.year}`
+  }
+
+  const fetchMOSDACSnowImages = async (_snowInfo: MOSDACSnowInfo) => {
+    let fetchedSnowImageCount = 0
+    const existingImages = new Map(snowImages)
+    const requests: Array<Promise<{ key: string, url: string }>> = []
+    let failedRequestCount = 0
+
+    for (const boxRow of BOXES) {
+      for (const box of boxRow) {
+        const key = box.bbox + mode + _snowInfo.time + _snowInfo.date + _snowInfo.month + _snowInfo.year + 'SNOW'
+        if (existingImages.has(key)) continue
+
+        const snowImageURL = getMOSDACSnowImageURL(box, _snowInfo)
+        const request = new Promise<{ key: string, url: string }>((resolve, reject) => {
+          localforage.getItem<Blob>(key).then(snowImage => {
+            if (snowImage !== null) resolve({ key, url: URL.createObjectURL(snowImage) })
+            else {
+              axios
+                .get<Blob>(snowImageURL, { responseType: 'blob' })
+                .then(({ data }) => {
+                  try {
+                    localforage.setItem(key, data)
+                  } catch (error) {
+                    if (
+                      (error as Error).name.includes('QuotaExceededError') ||
+                      (error as Error).message.includes('QuotaExceededError')
+                    ) {
+                      localforage.clear()
+                    }
+                  }
+
+                  resolve({ key, url: URL.createObjectURL(data) })
+                })
+                .catch(() => {
+                  failedRequestCount++
+                  reject()
+                })
+            }
+          })
+        })
+        requests.push(request)
+      }
+    }
+
+    if (requests.length > 0) setIsFetchingSnowImages(true)
+
+    for (const request of requests) {
+      request
+        .then(({ key, url }) => {
+          setSnowLayerFetchingStatus(++fetchedSnowImageCount/requests.length)
+          setSnowImages(prev => {
+            const next = new Map(prev)
+            next.set(key, url)
+            return next
+          })
+        })
+        .catch(() => {})
+    }
+
+    await Promise.allSettled(requests)
+
+    if (failedRequestCount > 0 && requests.length > 0) {
+      throw new Error('Failed to fetch snow cover images!')
+    }
+  }
+
+  const onSnowLayerSelect = async () => {
+    if (snowImages.size > 0 || isFetchingSnowImages) return
+
+    try {
+      setLayerFetchingStatus(_layerFetchingStatus => {
+        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+        newLayerFetchingStatus.set(Layer.SNOW, true)
+        return newLayerFetchingStatus
+      })
+
+      setSnowLayerFetchingStatus(0)
+      let _snowInfo: null | MOSDACSnowInfo = null
+      if (snowInfo === null) {
+        const response = await axios.get<MOSDACSnowInfo>('/api/snow-info')
+        setSnowInfo(response.data)
+        _snowInfo = response.data
+      } else {
+        _snowInfo = snowInfo
+      }
+      
+      await fetchMOSDACSnowImages(_snowInfo)
+      setLayerFetchingStatus(_layerFetchingStatus => {
+        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+        newLayerFetchingStatus.delete(Layer.SNOW)
+        return newLayerFetchingStatus
+      })
+      setSnowLayerFetchingStatus(0)
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        'We\'re not able to load data for snow cover at the moment. Sorry!',
+        {
+          position: 'top-right',
+          icon: <FrownIcon className='size-4' />,
+          style: {
+            width: 'max-content',
+          }
+        }
+      )
+      setLayers(_layers => _layers.filter(layerID => layerID !== Layer.SNOW))
+      setLayerFetchingStatus(_layerFetchingStatus => {
+        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+        newLayerFetchingStatus.set(Layer.SNOW, false)
+        return newLayerFetchingStatus
+      })
+    } finally {
+      setIsFetchingSnowImages(false)
+    }
+  }
+
   // Effects:
   useEffect(() => {
     getMOSDACLogData()
@@ -705,6 +829,7 @@ const Leaflet = () => {
           onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
           onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
           onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
+          onSnowLayerSelect={onSnowLayerSelect}
         />
         <HistoryCombobox
           logs={logs}
@@ -745,6 +870,8 @@ const Leaflet = () => {
         fireSmokeHeatmapData={fireSmokeHeatmapData}
         cloudburstHeavyRainData={cloudburstHeavyRainData}
         ripCurrentForecastData={ripCurrentForecastData}
+        snowInfo={snowInfo}
+        snowImages={snowImages}
       />
       <Footer />
     </div>
