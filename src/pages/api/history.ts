@@ -1,5 +1,4 @@
 // Packages:
-import { S3Client, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import fetch from 'node-fetch'
 
 // Typescript:
@@ -13,16 +12,6 @@ export enum MOSDACImageMode {
   FERRET = 'FERRET',
   NHC = 'NHC',
 }
-
-// Constants:
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY!,
-    secretAccessKey: process.env.R2_SECRET!,
-  },
-})
 
 // Exports:
 export const getMOSDACURL = (bbox: string, date: string, month: string, year: string, formattedTimestamp: string, mode?: MOSDACImageMode) => {
@@ -85,23 +74,12 @@ export default async function handler(
   )
 
   mode = mode === undefined ? MOSDACImageMode.GREYSCALE : mode
-  const key = `${bbox}/${mode}/${formattedTimestamp}`
 
-  // 1. Check cache.
-  // try {
-  //   await r2.send(new HeadObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }))
-  //   return res.redirect(302, `${process.env.R2_DEV_BASE}/${key}`)
-  // } catch (error) {
-  //   console.log(`[LOG] Probable cache-miss for ${key}`, error)
-  // }
-
-  // 2. Fetch from MOSDAC.
   const upstream = await fetch(URL)
   if (!upstream.ok) {
     return res.status(upstream.status).send('ERROR: MOSDAC did not return any data.')
   }
 
-  // 3. Get binary decode hex fallback.
   let buf: Buffer<ArrayBuffer>
   const ctype = upstream.headers.get('content-type') || ''
   if (ctype.includes('image/png')) {
@@ -112,18 +90,6 @@ export default async function handler(
     buf = Buffer.from(hex, 'hex')
   }
 
-  // 4. Store in r2 Bucket.
-  // await r2.send(
-  //   new PutObjectCommand({
-  //     Bucket: process.env.R2_BUCKET,
-  //     Key: key,
-  //     Body: buf,
-  //     ContentType: 'image/png',
-  //     CacheControl: 'public,max-age=31536000,immutable',
-  //   })
-  // )
-
-  // 5. Return PNG.
   res.setHeader('cache-control', 'public,max-age=3600')
   res.setHeader('content-type', 'image/png')
   res.status(200).send(buf)

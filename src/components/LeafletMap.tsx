@@ -19,7 +19,7 @@ import 'leaflet-velocity'
 
 // Constants:
 import { BOXES } from '@/pages/index'
-import { CRS, HeatLatLngTuple } from 'leaflet'
+import { CRS, HeatLatLngTuple, LatLngBoundsExpression } from 'leaflet'
 const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
 const ZOOM = 5
 
@@ -55,6 +55,7 @@ const LeafletMap = ({
   fireSmokeData,
   fireSmokeHeatmapData,
   cloudburstHeavyRainData,
+  ripCurrentForecastData,
 }: {
   images: Map<string, string>
   selectedLog: MOSDACLog | null
@@ -65,6 +66,7 @@ const LeafletMap = ({
   fireSmokeData: FirePoint[] | null
   fireSmokeHeatmapData: HeatLatLngTuple[] | null
   cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
+  ripCurrentForecastData: string | null
 }) => {
   // State:
   const [isDragging, setIsDragging] = useState(false)
@@ -76,6 +78,11 @@ const LeafletMap = ({
     particleAge: 120,
     velocityScale: 0.007
   }), [])
+
+  const ripCurrentForecastBounds = useMemo<LatLngBoundsExpression>(() => [
+    [-51.7878, -24.5326],
+    [72.5638, 187.9447]
+  ], [])
   
   // Effects:
   useEffect(() => {
@@ -170,6 +177,14 @@ const LeafletMap = ({
       {
         (layers.includes(Layer.CLOUDBURST_FORECAST) && cloudburstHeavyRainData !== null) && (
           <CloudburstForecastLayer data={cloudburstHeavyRainData.cloudburstPoints} />
+        )
+      }
+      {
+        (layers.includes(Layer.RIP_CURRENT_FORECAST) && ripCurrentForecastData) && (
+          <ImageOverlay
+            bounds={ripCurrentForecastBounds}
+            url={ripCurrentForecastData}
+          />
         )
       }
     </MapContainer>

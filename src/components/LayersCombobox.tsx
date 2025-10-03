@@ -53,6 +53,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from './ui/scroll-area'
 
 // Functions:
 const LayersCombobox = ({
@@ -66,6 +67,7 @@ const LayersCombobox = ({
   onHeavyRainLayerSelect,
   onHeavyRainForecastLayerSelect,
   onCloudburstForecastLayerSelect,
+  onRipCurrentForecastLayerSelect,
 }: {
   layers: Layer[]
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
@@ -77,6 +79,7 @@ const LayersCombobox = ({
   onHeavyRainLayerSelect: () => void
   onHeavyRainForecastLayerSelect: () => void
   onCloudburstForecastLayerSelect: () => void
+  onRipCurrentForecastLayerSelect: () => void
 }) => {
   // Memo:
   const LAYERS = useMemo(() => [
@@ -112,75 +115,79 @@ const LayersCombobox = ({
         <Command>
           <CommandList>
             <CommandGroup>
-              {LAYERS.map(layer => (
-                <CommandItem
-                  key={layer.id}
-                  value={layer.id}
-                  onSelect={currentValue => {
-                    if (layers.includes(currentValue as Layer)) {
-                      setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
-                    } else {
-                      setLayers(_layers => [...layers, layer.id])
+              <ScrollArea className='h-52'>
+                {LAYERS.map(layer => (
+                  <CommandItem
+                    key={layer.id}
+                    value={layer.id}
+                    onSelect={currentValue => {
+                      if (layers.includes(currentValue as Layer)) {
+                        setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
+                      } else {
+                        setLayers(_layers => [...layers, layer.id])
 
-                      switch (layer.id) {
-                        case Layer.WIND_DIRECTION:
-                          onWindDirectionLayerSelect()
-                          break
-                        case Layer.WIND_HEATMAP:
-                          onWindHeatmapLayerSelect()
-                          break
-                        case Layer.FIRE_SMOKE:
-                          onFireSmokeLayerSelect()
-                          break
-                        case Layer.FIRE_SMOKE_HEATMAP:
-                          onFireSmokeHeatmapLayerSelect()
-                          break
-                        case Layer.HEAVY_RAIN:
-                          onHeavyRainLayerSelect()
-                          break
-                        case Layer.HEAVY_RAIN:
-                          onHeavyRainForecastLayerSelect()
-                          break
-                        case Layer.HEAVY_RAIN:
-                          onCloudburstForecastLayerSelect()
-                          break
-                        default:
-                          break
-                      }
-                    }
-                  }}
-                  className='justify-between cursor-pointer'
-                >
-                  <div className={cn('flex justify-center items-center gap-2 transition-all', layers.includes(layer.id) && 'text-blue-500')}>
-                    {layer.icon}
-                    <span className='text-sm font-medium'>
-                      {layer.name}
-                    </span>
-                  </div>
-                  {
-                    layerFetchingStatus.has(layer.id) ? (
-                      <>
-                        {
-                          layerFetchingStatus.get(layer.id) ? (
-                            <Loader2Icon className='size-3 animate-spin' />
-                          ) : (
-                            <span title='Something went wrong..'>
-                              <FrownIcon className='size-3 text-rose-500' />
-                            </span>
-                          )
+                        switch (layer.id) {
+                          case Layer.WIND_DIRECTION:
+                            onWindDirectionLayerSelect()
+                            break
+                          case Layer.WIND_HEATMAP:
+                            onWindHeatmapLayerSelect()
+                            break
+                          case Layer.FIRE_SMOKE:
+                            onFireSmokeLayerSelect()
+                            break
+                          case Layer.FIRE_SMOKE_HEATMAP:
+                            onFireSmokeHeatmapLayerSelect()
+                            break
+                          case Layer.HEAVY_RAIN:
+                            onHeavyRainLayerSelect()
+                            break
+                          case Layer.HEAVY_RAIN_FORECAST:
+                            onHeavyRainForecastLayerSelect()
+                            break
+                          case Layer.CLOUDBURST_FORECAST:
+                            onCloudburstForecastLayerSelect()
+                          case Layer.RIP_CURRENT_FORECAST:
+                            onRipCurrentForecastLayerSelect()
+                            break
+                          default:
+                            break
                         }
-                      </>
-                    ) : (
-                      <CheckIcon
-                        className={cn(
-                          'size-4',
-                          layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                    )
-                  }
-                </CommandItem>
-              ))}
+                      }
+                    }}
+                    className='justify-between cursor-pointer'
+                  >
+                    <div className={cn('flex justify-center items-center gap-2 transition-all', layers.includes(layer.id) && 'text-blue-500')}>
+                      {layer.icon}
+                      <span className='text-sm font-medium'>
+                        {layer.name}
+                      </span>
+                    </div>
+                    {
+                      layerFetchingStatus.has(layer.id) ? (
+                        <>
+                          {
+                            layerFetchingStatus.get(layer.id) ? (
+                              <Loader2Icon className='size-3 animate-spin' />
+                            ) : (
+                              <span title='Something went wrong..'>
+                                <FrownIcon className='size-3 text-rose-500' />
+                              </span>
+                            )
+                          }
+                        </>
+                      ) : (
+                        <CheckIcon
+                          className={cn(
+                            'size-4',
+                            layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                      )
+                    }
+                  </CommandItem>
+                ))}
+              </ScrollArea>
             </CommandGroup>
           </CommandList>
         </Command>

@@ -101,6 +101,8 @@ const Leaflet = () => {
   const [fireSmokeHeatmapData, setFireSmokeHeatmapData] = useState<HeatLatLngTuple[] | null>(null)
   const [isFetchingCloudburstHeavyRainData, setIsFetchingCloudburstHeavyRainData] = useState(false)
   const [cloudburstHeavyRainData, setCloudburstHeavyRainData] = useState<CloudburstHeavyRainProcessedData | null>(null)
+  const [isFetchingRipCurrentForecastData, setIsFetchingRipCurrentForecastData] = useState(false)
+  const [ripCurrentForecastData, setRipCurrentForecastData] = useState<string | null>(null)
   const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [isFetchingImages, setIsFetchingImages] = useState(false)
@@ -638,6 +640,50 @@ const Leaflet = () => {
     }
   }
 
+  const onRipCurrentForecastLayerSelect = async () => {
+    if (ripCurrentForecastData === null) {
+      try {
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.RIP_CURRENT_FORECAST, true)
+          return newLayerFetchingStatus
+        })
+        if (isFetchingRipCurrentForecastData) return
+        setIsFetchingRipCurrentForecastData(true)
+        const now = new Date()
+        const currentDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${(now.getDate()).toString().padStart(2, '0')}`
+        const currentLocalHour = (now.getHours()).toString().padStart(2, '0')
+        const response = await axios.get<Blob>(`/api/rip-current-forecast?date=${currentDate}&hour=${currentLocalHour}`, { responseType: 'blob' })
+        setRipCurrentForecastData(URL.createObjectURL(response.data))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.delete(Layer.RIP_CURRENT_FORECAST)
+          return newLayerFetchingStatus
+        })
+      } catch (error) {
+        console.error(error)
+          toast.error(
+            'We\'re not able to load data for rip current forecast at the moment. Sorry!',
+            {
+              position: 'top-right',
+              icon: <FrownIcon className='size-4' />,
+              style: {
+                width: 'max-content',
+              }
+            }
+          )
+        setLayers(_layers => _layers.filter(layerID => layerID !== Layer.RIP_CURRENT_FORECAST))
+        setLayerFetchingStatus(_layerFetchingStatus => {
+          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
+          newLayerFetchingStatus.set(Layer.RIP_CURRENT_FORECAST, false)
+          return newLayerFetchingStatus
+        })
+      } finally {
+        setIsFetchingRipCurrentForecastData(false)
+      }
+    }
+  }
+
   // Effects:
   useEffect(() => {
     getMOSDACLogData()
@@ -658,6 +704,7 @@ const Leaflet = () => {
           onHeavyRainLayerSelect={onHeavyRainLayerSelect}
           onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
           onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
+          onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
         />
         <HistoryCombobox
           logs={logs}
@@ -697,6 +744,7 @@ const Leaflet = () => {
         fireSmokeData={fireSmokeData}
         fireSmokeHeatmapData={fireSmokeHeatmapData}
         cloudburstHeavyRainData={cloudburstHeavyRainData}
+        ripCurrentForecastData={ripCurrentForecastData}
       />
       <Footer />
     </div>

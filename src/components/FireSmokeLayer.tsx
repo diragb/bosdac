@@ -17,7 +17,7 @@ import { LayerGroup, Marker } from 'react-leaflet'
 // Functions:
 const _FlameIcon = new L.DivIcon({
   html: ReactDOMServer.renderToStaticMarkup(
-    <FlameIcon className='w-6 h-6 text-rose-500 fill-rose-500' strokeWidth={1} />
+    <FlameIcon className='w-6 h-6 text-rose-400 fill-orange-600' strokeWidth={1} />
   ),
   className: 'fire-icon',
   iconAnchor: [12, 12],
