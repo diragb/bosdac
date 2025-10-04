@@ -1,8 +1,7 @@
 // Packages:
 import dynamic from 'next/dynamic'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
-import { cn } from '@/lib/utils'
 import localforage from 'localforage'
 import toFirePoint from '@/lib/toFirePoint'
 import toWindVelocityFormat from '@/lib/toWindVelocityFormat'
@@ -20,6 +19,12 @@ import type { HeatLatLngTuple } from 'leaflet'
 import type { MOSDACCloudburstAndHeavyRain } from './api/cloudburst-and-heavy-rain'
 import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
 import type { MOSDACSnowInfo } from './api/snow-info'
+
+export enum LogDownloadStatus {
+  DOWNLOADING = 0,
+  DOWNLOADED = 1,
+  FAILED_TO_DOWNLOAD = 2,
+}
 
 // Assets:
 import { FrownIcon } from 'lucide-react'
@@ -42,6 +47,7 @@ class Box {
 
 // Constants:
 const ADJUSTMENTS = [0, 0, 0, 0, 0, 0] as const
+
 export const BOXES = [
   [
     new Box('918385.800,5675870.433,4202310.778,9459784.055', {north:64.4299080496+ADJUSTMENTS[0],east:37.7500000054,south:45.3441870900+ADJUSTMENTS[1],west:8.2500000090}),
@@ -82,17 +88,48 @@ export const BOXES = [
   ],
 ] as const
 
+export const ANIMATION_SPEEDS = [
+  {
+    id: '3mps',
+    label: '3m/s',
+    value: 50,
+  },
+  {
+    id: '6mps',
+    label: '6m/s',
+    value: 100,
+  },
+  {
+    id: '15mps',
+    label: '15m/s',
+    value: 250,
+  },
+  {
+    id: '30mps',
+    label: '30m/s',
+    value: 500,
+  },
+  {
+    id: '1hps',
+    label: '1h/s',
+    value: 1000,
+  },
+]
+
 // Components:
 import Footer from '@/components/Footer'
-import { Button } from '@/components/ui/button'
 import LayersCombobox, { Layer } from '@/components/LayersCombobox'
 import HistoryCombobox from '@/components/HistoryCombobox'
 import LegendsCombobox from '@/components/ModesCombobox'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import { Slider } from '@/components/ui/slider'
+import AnimationCombobox from '@/components/AnimationCombobox'
 
 // Functions:
 const Leaflet = () => {
+  // Ref:
+  const activeNetworkRequestsRef = useRef(0)
+
   // State:
   const [layers, setLayers] = useState<Layer[]>([])
   const [windDirectionData, setWindDirectionData] = useState<MOSDACWindVelocity | null>(null)
@@ -113,11 +150,20 @@ const Leaflet = () => {
   const [isFetchingImages, setIsFetchingImages] = useState(false)
   const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number | boolean>>(new Map())
   const [logs, setLogs] = useState<MOSDACLogData>([])
+  const [logDownloadStatus, setLogDownloadStatus] = useState<Map<string, LogDownloadStatus>>(new Map())
+  const [numberOfLogsDownloaded, setNumberOfLogsDownloaded] = useState(0)
+  const [averageLogDownloadSpeed, setAverageLogDownloadSpeed] = useState(0)
   const [selectedLog, setSelectedLog] = useState<MOSDACLog | null>(null)
+  const [selectedLogIndex, setSelectedLogIndex] = useState(0)
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
   const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number | boolean>>(new Map())
   const [opacity, setOpacity] = useState(0.85)
   const [isAnimationOn, setIsAnimationOn] = useState(false)
+  const [animationRangeIndices, setAnimationRangeIndices] = useState<[number, number]>([0, 0])
+  const [selectedAnimationSpeed, setSelectedAnimationSpeed] = useState<typeof ANIMATION_SPEEDS[number]>(ANIMATION_SPEEDS[0])
+
+  // Memo:
+  const reversedLogs = useMemo(() => [...logs].reverse(), [logs])
 
   // Functions:
   const sortLogs = (logs: MOSDACLogData) => {
@@ -158,7 +204,9 @@ const Leaflet = () => {
         const sortedLogs = sortLogs(data)
         setLogs(sortedLogs)
         setSelectedLog(sortedLogs[0])
-        onLogSelect(sortedLogs[0])
+        setSelectedLogIndex(sortedLogs.length - 1)
+        setAnimationRangeIndices([sortedLogs.length - 1 - 10, sortedLogs.length - 1])
+        onLogSelect(sortedLogs[0], 0)
       }
       else throw new Error(data)
     } catch (error) {
@@ -170,22 +218,38 @@ const Leaflet = () => {
     return `/api/history?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
   }
 
-  const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log') => {
+  const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log'): Promise<number | null> => {
     try {
       let fetchedImageCount = 0
       const existingImages = new Map(images)
       const requests: Array<Promise<{ key: string, url: string }>> = []
+      let usedAnyCachedImage = false
+      let networkDownloadStarted = false
+      let networkDownloadStartTime = 0
+      let wasContendedAtStart = false
 
       for (const boxRow of BOXES) {
         for (const box of boxRow) {
           const key = box.bbox + mode + log.when.formatted
-          if (existingImages.has(key)) continue
+          if (existingImages.has(key)) {
+            usedAnyCachedImage = true
+            continue
+          }
 
           const imageURL = getMOSDACImageURL(box, log, mode)
           const request = new Promise<{ key: string, url: string }>(resolve => {
             localforage.getItem<Blob>(key).then(image => {
-              if (image !== null) resolve({ key, url: URL.createObjectURL(image) })
+              if (image !== null) {
+                usedAnyCachedImage = true
+                resolve({ key, url: URL.createObjectURL(image) })
+              }
               else {
+                if (!networkDownloadStarted) {
+                  networkDownloadStarted = true
+                  wasContendedAtStart = activeNetworkRequestsRef.current > 0
+                  networkDownloadStartTime = (typeof performance !== 'undefined' ? performance.now() : Date.now())
+                }
+                activeNetworkRequestsRef.current++
                 axios
                   .get<Blob>(imageURL, { responseType: 'blob' })
                   .then(({ data }) => {
@@ -201,6 +265,9 @@ const Leaflet = () => {
                     }
 
                     resolve({ key, url: URL.createObjectURL(data) })
+                  })
+                  .finally(() => {
+                    activeNetworkRequestsRef.current--
                   })
               }
             })
@@ -236,14 +303,20 @@ const Leaflet = () => {
       }
 
       await Promise.allSettled(requests)
+
+      if (usedAnyCachedImage || !networkDownloadStarted || wasContendedAtStart) return null
+
+      const networkDownloadEndTime = (typeof performance !== 'undefined' ? performance.now() : Date.now())
+      return Math.round(networkDownloadEndTime - networkDownloadStartTime)
     } catch (error) {
       console.error(error)
     } finally {
       setIsFetchingImages(false)
     }
+    return null
   }
 
-  const onLogSelect = async (log: MOSDACLog) => {
+  const onLogSelect = async (log: MOSDACLog, logIndex: number) => {
     let previousLog = selectedLog
     try {
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
@@ -252,11 +325,37 @@ const Leaflet = () => {
         return newHistoricalLogsFetchingStatus
       })
       setSelectedLog(log)
-      await fetchMOSDACImages(log, mode, 'log')
+      setSelectedLogIndex(logIndex)
+
+      if (logs.length > 0) {
+        if (logIndex > logs.length - 1 - animationRangeIndices[0]) {
+          setAnimationRangeIndices(_animationRangeIndices => [(logs.length - 1 - logIndex), animationRangeIndices[1]])
+        } else if (logIndex < logs.length - 1 - animationRangeIndices[1]) {
+          setAnimationRangeIndices(_animationRangeIndices => [animationRangeIndices[0], (logs.length - 1 - logIndex)])
+        }
+      }
+
+      setLogDownloadStatus(_logDownloadStatus => {
+        const newLogDownloadStatus = new Map(_logDownloadStatus)
+        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADING)
+        return newLogDownloadStatus
+      })
+      const totalSpeed = (await fetchMOSDACImages(log, mode, 'log'))
+      if (totalSpeed !== null) {
+        setAverageLogDownloadSpeed(_averageLogDownloadSpeed => (
+          ((_averageLogDownloadSpeed * numberOfLogsDownloaded) + totalSpeed) / (numberOfLogsDownloaded + 1)
+        ))
+        setNumberOfLogsDownloaded(_numberOfLogsDownloaded => _numberOfLogsDownloaded + 1)
+      }
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
         newHistoricalLogsFetchingStatus.delete(log.name)
         return newHistoricalLogsFetchingStatus
+      })
+      setLogDownloadStatus(_logDownloadStatus => {
+        const newLogDownloadStatus = new Map(_logDownloadStatus)
+        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADED)
+        return newLogDownloadStatus
       })
     } catch (error) {
       console.error(error)
@@ -275,6 +374,11 @@ const Leaflet = () => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
         newHistoricalLogsFetchingStatus.set(log.name, false)
         return newHistoricalLogsFetchingStatus
+      })
+      setLogDownloadStatus(_logDownloadStatus => {
+        const newLogDownloadStatus = new Map(_logDownloadStatus)
+        newLogDownloadStatus.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
+        return newLogDownloadStatus
       })
     }
   }
@@ -812,7 +916,7 @@ const Leaflet = () => {
   useEffect(() => {
     getMOSDACLogData()
   }, [])
-
+  
   // Return:
   return (
     <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
@@ -837,10 +941,19 @@ const Leaflet = () => {
           onSelect={onLogSelect}
           historicalLogsFetchingStatus={historicalLogsFetchingStatus}
         />
-        <Button variant='outline' className='relative w-full cursor-pointer'>
-          <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : 'bg-rose-400')} />
-          Animation
-        </Button>
+        <AnimationCombobox
+          logs={reversedLogs}
+          logDownloadStatus={logDownloadStatus}
+          averageLogDownloadSpeed={averageLogDownloadSpeed}
+          isAnimationOn={isAnimationOn}
+          setIsAnimationOn={setIsAnimationOn}
+          selectedLogIndex={logs.length - 1 - selectedLogIndex}
+          onLogSelect={onLogSelect}
+          animationRangeIndices={animationRangeIndices}
+          setAnimationRangeIndices={setAnimationRangeIndices}
+          selectedAnimationSpeed={selectedAnimationSpeed}
+          setSelectedAnimationSpeed={setSelectedAnimationSpeed}
+        />
         <LegendsCombobox
           selectedMode={mode}
           onSelect={onModeSelect}

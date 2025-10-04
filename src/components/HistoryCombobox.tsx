@@ -2,12 +2,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import sleep from 'sleep-promise'
 
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
 
 // Assets:
-import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FrownIcon, Loader2Icon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
+import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FrownIcon, Loader2Icon, RotateCcwIcon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -39,7 +40,7 @@ const HistoryCombobox = ({
 }: {
   logs: MOSDACLogData
   selectedLog: MOSDACLog | null
-  onSelect: (selectedLog: MOSDACLog) => void
+  onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
   historicalLogsFetchingStatus: Map<string, number | boolean>
 }) => {
   // Memo:
@@ -56,6 +57,7 @@ const HistoryCombobox = ({
   const [isHistoryOn, setIsHistoryOn] = useState(false)
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+  const [animateResetIcon, setAnimateResetIcon] = useState(false)
 
   // Effects:
   useEffect(() => {
@@ -101,18 +103,35 @@ const HistoryCombobox = ({
   // Return:
   return (
     <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
-      <PopoverTrigger asChild>
-        <Button variant='outline' className='relative w-full cursor-pointer' disabled={logs.length === 0}>
-          <div
-            className={cn(
-              'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
-              historicalLogsFetchingStatus.size > 0 ? 'bg-blue-500 animate-pulse' : isHistoryOn ? 'bg-green-500' : 'bg-rose-400',
-            )}
-          />
-          History
+      <div className='flex gap-2 w-full'>
+        <PopoverTrigger asChild>
+          <Button variant='outline' className='relative w-[calc(100%-44px)] cursor-pointer' disabled={logs.length === 0}>
+            <div
+              className={cn(
+                'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
+                historicalLogsFetchingStatus.size > 0 ? 'bg-blue-500 animate-pulse' : isHistoryOn ? 'bg-green-500' : 'bg-rose-400',
+              )}
+            />
+            History
+          </Button>
+        </PopoverTrigger>
+        <Button
+          size='icon'
+          variant='outline'
+          className='relative cursor-pointer'
+          disabled={logs.length === 0}
+          onClick={async () => {
+            setIsHistoryOn(false)
+            onSelect(logs[0], 0)
+            setAnimateResetIcon(true)
+            await sleep(1000)
+            setAnimateResetIcon(false)
+          }}
+        >
+          <RotateCcwIcon className={cn('size-4 text-black', animateResetIcon && 'rotate-counterclockwise')} />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className={cn('z-[1001] w-96 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
+      </div>
+      <PopoverContent className={cn('z-[1001] w-96 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={60}>
         <Command>
           <CommandList>
             <CommandGroup>
@@ -131,7 +150,7 @@ const HistoryCombobox = ({
                         setIsHistoryOn(index !== 0)
                       }
 
-                      onSelect(_selectedLog!)
+                      onSelect(_selectedLog!, index)
                     }}
                     className='justify-between cursor-pointer'
                   >

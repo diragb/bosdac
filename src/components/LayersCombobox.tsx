@@ -28,7 +28,6 @@ import {
   FlameKindlingIcon,
   FrownIcon,
   Loader2Icon,
-  ShellIcon,
   SnowflakeIcon,
   WavesIcon,
   WindIcon,
