@@ -1,5 +1,6 @@
 // Packages:
 import { Geist } from 'next/font/google'
+import Head from 'next/head'
 
 // Typescript:
 import type { AppProps } from 'next/app'
@@ -19,10 +20,17 @@ import { Toaster } from '@/components/ui/sonner'
 
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
-  <main className={`${geistSans.className} font-sans`}>
-    <Component {...pageProps} />
-    <Toaster />
-  </main>
+  <>
+    <Head>
+      <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
+      <meta name='apple-mobile-web-app-capable' content='yes' />
+      <meta name='mobile-web-app-capable' content='yes' />
+    </Head>
+    <main className={`${geistSans.className} font-sans`}>
+      <Component {...pageProps} />
+      <Toaster />
+    </main>
+  </>
 )
 
 // Exports:
