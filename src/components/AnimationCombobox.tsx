@@ -223,7 +223,7 @@ const AnimationCombobox = ({
   return (
     <Popover open={animationPopoverOpen} onOpenChange={setAnimationPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant='outline' className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
+        <Button variant='outline' disabled={logs.length === 0} className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
           <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : isLongPressing ? 'bg-blue-500' : 'bg-rose-400')} />
           Animation
         </Button>

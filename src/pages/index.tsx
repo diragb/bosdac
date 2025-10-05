@@ -124,6 +124,7 @@ import LegendsCombobox from '@/components/ModesCombobox'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import { Slider } from '@/components/ui/slider'
 import AnimationCombobox from '@/components/AnimationCombobox'
+import MOSDACDownDialog from '@/components/MOSDACDownDialog'
 
 // Functions:
 const Leaflet = () => {
@@ -131,6 +132,7 @@ const Leaflet = () => {
   const activeNetworkRequestsRef = useRef(0)
 
   // State:
+  const [isMOSDACDownDialogOpen, setIsMOSDACDownDialogOpen] = useState(false)
   const [layers, setLayers] = useState<Layer[]>([])
   const [windDirectionData, setWindDirectionData] = useState<MOSDACWindVelocity | null>(null)
   const [isFetchingWindDirectionData, setIsFetchingWindDirectionData] = useState(false)
@@ -210,7 +212,8 @@ const Leaflet = () => {
       }
       else throw new Error(data)
     } catch (error) {
-      console.error(error)
+      console.error(`Upstream is fucked`, error)
+      setIsMOSDACDownDialogOpen(true)
     }
   }
 
@@ -914,80 +917,89 @@ const Leaflet = () => {
 
   // Effects:
   useEffect(() => {
+    localforage.config({
+      driver: localforage.INDEXEDDB,
+      name: 'bosdac',
+      storeName: 'bosdac-cache'
+    })
+
     getMOSDACLogData()
   }, [])
   
   // Return:
   return (
-    <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
-      <div className='absolute left-3 top-3 z-[1001] flex justify-center items-center flex-col gap-2 w-42 p-3 bg-white rounded-md'>
-        <LayersCombobox
-          layers={layers}
-          setLayers={setLayers}
-          layerFetchingStatus={layerFetchingStatus}
-          onWindDirectionLayerSelect={onWindDirectionLayerSelect}
-          onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
-          onFireSmokeLayerSelect={onFireSmokeLayerSelect}
-          onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
-          onHeavyRainLayerSelect={onHeavyRainLayerSelect}
-          onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
-          onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
-          onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
-          onSnowLayerSelect={onSnowLayerSelect}
-        />
-        <HistoryCombobox
-          logs={logs}
-          selectedLog={selectedLog}
-          onSelect={onLogSelect}
-          historicalLogsFetchingStatus={historicalLogsFetchingStatus}
-        />
-        <AnimationCombobox
-          logs={reversedLogs}
-          logDownloadStatus={logDownloadStatus}
-          averageLogDownloadSpeed={averageLogDownloadSpeed}
-          isAnimationOn={isAnimationOn}
-          setIsAnimationOn={setIsAnimationOn}
-          selectedLogIndex={logs.length - 1 - selectedLogIndex}
-          onLogSelect={onLogSelect}
-          animationRangeIndices={animationRangeIndices}
-          setAnimationRangeIndices={setAnimationRangeIndices}
-          selectedAnimationSpeed={selectedAnimationSpeed}
-          setSelectedAnimationSpeed={setSelectedAnimationSpeed}
-        />
-        <LegendsCombobox
-          selectedMode={mode}
-          onSelect={onModeSelect}
-          modeFetchingStatus={modeFetchingStatus}
-        />
-        <div className='flex flex-col gap-2.5 w-full p-2 pb-2.5 border bg-secondary rounded-md'>
-          <div className='flex items-center justify-between w-full'>
-            <span className='text-xs font-semibold'>Opacity</span>
-            <span className='text-xs font-medium'>{(opacity * 100).toFixed(0)}%</span>
-          </div>
-          <Slider
-            defaultValue={[opacity * 100]}
-            max={100}
-            step={1}
-            onValueChange={value => setOpacity(value[0] / 100)}
+    <>
+      <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
+        <div className='absolute left-3 top-3 z-[1001] flex justify-center items-center flex-col gap-2 w-42 p-3 bg-white rounded-md'>
+          <LayersCombobox
+            layers={layers}
+            setLayers={setLayers}
+            layerFetchingStatus={layerFetchingStatus}
+            onWindDirectionLayerSelect={onWindDirectionLayerSelect}
+            onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
+            onFireSmokeLayerSelect={onFireSmokeLayerSelect}
+            onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
+            onHeavyRainLayerSelect={onHeavyRainLayerSelect}
+            onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
+            onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
+            onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
+            onSnowLayerSelect={onSnowLayerSelect}
           />
+          <HistoryCombobox
+            logs={logs}
+            selectedLog={selectedLog}
+            onSelect={onLogSelect}
+            historicalLogsFetchingStatus={historicalLogsFetchingStatus}
+          />
+          <AnimationCombobox
+            logs={reversedLogs}
+            logDownloadStatus={logDownloadStatus}
+            averageLogDownloadSpeed={averageLogDownloadSpeed}
+            isAnimationOn={isAnimationOn}
+            setIsAnimationOn={setIsAnimationOn}
+            selectedLogIndex={logs.length - 1 - selectedLogIndex}
+            onLogSelect={onLogSelect}
+            animationRangeIndices={animationRangeIndices}
+            setAnimationRangeIndices={setAnimationRangeIndices}
+            selectedAnimationSpeed={selectedAnimationSpeed}
+            setSelectedAnimationSpeed={setSelectedAnimationSpeed}
+          />
+          <LegendsCombobox
+            selectedMode={mode}
+            onSelect={onModeSelect}
+            modeFetchingStatus={modeFetchingStatus}
+          />
+          <div className='flex flex-col gap-2.5 w-full p-2 pb-2.5 border bg-secondary rounded-md'>
+            <div className='flex items-center justify-between w-full'>
+              <span className='text-xs font-semibold'>Opacity</span>
+              <span className='text-xs font-medium'>{(opacity * 100).toFixed(0)}%</span>
+            </div>
+            <Slider
+              defaultValue={[opacity * 100]}
+              max={100}
+              step={1}
+              onValueChange={value => setOpacity(value[0] / 100)}
+            />
+          </div>
         </div>
+        <LeafletMap
+          images={images}
+          mode={mode}
+          opacity={opacity}
+          selectedLog={selectedLog}
+          layers={layers}
+          windDirectionData={windDirectionData}
+          fireSmokeData={fireSmokeData}
+          fireSmokeHeatmapData={fireSmokeHeatmapData}
+          cloudburstHeavyRainData={cloudburstHeavyRainData}
+          ripCurrentForecastData={ripCurrentForecastData}
+          snowInfo={snowInfo}
+          snowImages={snowImages}
+        />
+        <Footer />
       </div>
-      <LeafletMap
-        images={images}
-        mode={mode}
-        opacity={opacity}
-        selectedLog={selectedLog}
-        layers={layers}
-        windDirectionData={windDirectionData}
-        fireSmokeData={fireSmokeData}
-        fireSmokeHeatmapData={fireSmokeHeatmapData}
-        cloudburstHeavyRainData={cloudburstHeavyRainData}
-        ripCurrentForecastData={ripCurrentForecastData}
-        snowInfo={snowInfo}
-        snowImages={snowImages}
-      />
-      <Footer />
-    </div>
+      <MOSDACDownDialog isOpen={isMOSDACDownDialogOpen} onOpenChange={setIsMOSDACDownDialogOpen} />
+    </>
   )
 }
 
