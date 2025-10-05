@@ -8,7 +8,7 @@ import sleep from 'sleep-promise'
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
 
 // Assets:
-import { BrickWallFireIcon, CheckIcon, CloudHailIcon, FlameIcon, FrownIcon, Loader2Icon, RotateCcwIcon, ShellIcon, SnowflakeIcon, WavesIcon, WindIcon } from 'lucide-react'
+import { CheckIcon, FrownIcon, Loader2Icon, RotateCcwIcon } from 'lucide-react'
 
 // Constants:
 const geistSans = Geist({
@@ -66,7 +66,7 @@ const HistoryCombobox = ({
     const raf = requestAnimationFrame(() => {
       const root = scrollAreaRef.current ?? undefined
       const viewport = root?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null
-      const escape = (window as any).CSS?.escape ?? ((s: string) => s.replace(/"/g, '\\"'))
+      const escape = (window as unknown as { CSS: { escape: (input: string) => void } }).CSS?.escape ?? ((s: string) => s.replace(/"/g, '\\"'))
       const selector = `[data-value="${escape(selectedLog.name)}"]`
       const target = (viewport ?? root)?.querySelector(selector) as HTMLElement | null
       if (target) {
@@ -75,7 +75,8 @@ const HistoryCombobox = ({
     })
 
     return () => cancelAnimationFrame(raf)
-  }, [historyPopoverOpen])
+  }, [historyPopoverOpen, selectedLog?.name])
+  // }, [historyPopoverOpen])
 
   // Functions:
   const formatGMTToLocal12Hours = (time: string) => {

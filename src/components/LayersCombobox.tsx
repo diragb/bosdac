@@ -104,7 +104,7 @@ const LayersCombobox = ({
     if (layers.includes(currentValue as Layer)) {
       setLayers(_layers => _layers.filter(layerID => layerID !== layer.id))
     } else {
-      setLayers(_layers => [...layers, layer.id])
+      setLayers(_layers => [..._layers, layer.id])
 
       switch (layer.id) {
         case Layer.WIND_DIRECTION:

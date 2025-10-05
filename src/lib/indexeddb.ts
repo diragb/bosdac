@@ -19,7 +19,7 @@ export const getIndexedDBSize = async (dbName: string): Promise<number> => {
           const objectStore = transaction.objectStore(storeName)
           const getAllRequest = objectStore.getAll()
           
-          const items = await new Promise<any[]>((res, rej) => {
+          const items = await new Promise<string[]>((res, rej) => {
             getAllRequest.onsuccess = () => res(getAllRequest.result)
             getAllRequest.onerror = () => rej(getAllRequest.error)
           })

@@ -1,6 +1,3 @@
-// Packages:
-import fetch from 'node-fetch'
-
 // Typescript:
 import type { NextApiRequest, NextApiResponse } from 'next'
 
@@ -65,7 +62,7 @@ export type MOSDACWindDirectionData = [MOSDACWindParameterData, MOSDACWindParame
 // Exports:
 export const latestWindDirection = async (): Promise<MOSDACWindDirectionData> => {
   const url = 'https://mosdac.gov.in/live/json_files/cgrib_gfs_0.5deg.json'
-  const MOSDACWindDirectionData: MOSDACWindDirectionData = await (await fetch(url, { method: 'GET' })).json()
+  const MOSDACWindDirectionData: MOSDACWindDirectionData = (await (await fetch(url, { method: 'GET' })).json()) as MOSDACWindDirectionData
 
   return MOSDACWindDirectionData
 }

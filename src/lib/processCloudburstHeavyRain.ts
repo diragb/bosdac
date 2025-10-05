@@ -60,7 +60,7 @@ const processCloudburstHeavyRain = (data: MOSDACCloudburstAndHeavyRain) => {
           lat: datum.geometry.coordinates[1],
           lng: datum.geometry.coordinates[0],
           type: 'other',
-          intensity: (datum.properties as any)?.value ?? 0.5,
+          intensity: (datum.properties as unknown as { value?: number })?.value ?? 0.5,
         })
         break
     }

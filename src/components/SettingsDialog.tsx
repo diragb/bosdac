@@ -40,7 +40,6 @@ import localforage from 'localforage'
 const SettingsDialog = () => {
   // State:
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoadingLocalQuotaInfo, setIsLoadingLocalQuotaInfo] = useState(false)
   const [localQuota, setLocalQuota] = useState({
     size: 0,
     quota: 0,
@@ -52,7 +51,6 @@ const SettingsDialog = () => {
   // Functions:
   const loadLocalQuotaInfo = useCallback(async () => {
     try {
-      setIsLoadingLocalQuotaInfo(true)
       const databaseSize = await getIndexedDBSize('localforage')
       const quotaInfo = await getIndexedDBQuota()
 
@@ -66,8 +64,6 @@ const SettingsDialog = () => {
     } catch (error) {
       console.error('Error getting database size:', error)
       throw error
-    } finally {
-      setIsLoadingLocalQuotaInfo(false)
     }
   }, [])
 
@@ -79,7 +75,9 @@ const SettingsDialog = () => {
   // Effects:
   useEffect(() => {
     loadLocalQuotaInfo()
-  }, [])
+  }, [loadLocalQuotaInfo])
+  // }, [])
+
 
   // Return:
   return (

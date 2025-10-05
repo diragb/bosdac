@@ -1,6 +1,3 @@
-// Packages:
-import fetch from 'node-fetch'
-
 // Typescript:
 import type { NextApiRequest, NextApiResponse } from 'next'
 

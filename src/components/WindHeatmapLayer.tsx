@@ -3,7 +3,7 @@
 // Packages:
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { useMap } from 'react-leaflet'
-import L from 'leaflet'
+import L, { type HeatLayer } from 'leaflet'
 import 'leaflet.heat'
 
 // Typescript:
@@ -19,7 +19,7 @@ const WindHeatmapLayer = ({ data: [uField, vField], intensity }: WindHeatmapLaye
   const map = useMap()
 
   // Ref:
-  const layerRef = useRef<any | null>(null)
+  const layerRef = useRef<HeatLayer | null>(null)
 
   // Memo:
   const intensityFn = useMemo(() => intensity ?? ((s: number) => s / 40), [intensity])
@@ -29,7 +29,7 @@ const WindHeatmapLayer = ({ data: [uField, vField], intensity }: WindHeatmapLaye
     if (!map) return () => {}
 
     if (!layerRef.current) {
-      const layer = (L as any).heatLayer([], {
+      const layer = L.heatLayer([], {
         radius: 15,
         blur: 20,
         maxZoom: 6,
@@ -77,7 +77,7 @@ const WindHeatmapLayer = ({ data: [uField, vField], intensity }: WindHeatmapLaye
         layer.setLatLngs(pts)
       } else {
         map.removeLayer(layer)
-        const newLayer = (L as any).heatLayer(pts, layer.options || {})
+        const newLayer = L.heatLayer(pts, layer.options || {})
         newLayer.addTo(map)
         layerRef.current = newLayer
       }

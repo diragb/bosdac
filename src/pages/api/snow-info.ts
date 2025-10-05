@@ -1,6 +1,3 @@
-// Packages:
-import fetch from 'node-fetch'
-
 // Typescript:
 import type { NextApiRequest, NextApiResponse } from 'next'
 
@@ -42,7 +39,7 @@ export default async function handler(
   let info: MOSDACSnowInfo
   try {
     info = await getMOSDACSnowInfo()
-  } catch (_error) {
+  } catch {
     return res.status(502).send('ERROR: MOSDAC did not return valid data.')
   }
 

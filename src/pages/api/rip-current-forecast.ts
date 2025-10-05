@@ -1,7 +1,4 @@
-// Packages:
-import fetch from 'node-fetch'
-
-// Typescript:
+/// Typescript:
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export enum MOSDACImageMode {
@@ -37,7 +34,7 @@ export default async function handler(
   try {
     MOSDACRipCurrentInfo = await getMOSDACRipCurrentInfo(date, hour)
     if (MOSDACRipCurrentInfo === null) throw new Error()
-  } catch (error) {
+  } catch {
     return res.status(502).send('ERROR: MOSDAC did not return any data.')
   }
   

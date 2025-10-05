@@ -115,7 +115,7 @@ const AnimationCombobox = ({
 
   const moveOneFrameBackward = (_selectedLogIndex: number, allowRepeat?: boolean) => {
     if (isAnimationOn) return
-    let newIndex = _selectedLogIndex - 1
+    const newIndex = _selectedLogIndex - 1
     if (newIndex >= animationRangeIndices[0] && newIndex <= animationRangeIndices[1]) {
       onLogSelect(logs[newIndex], logs.length - 1 - newIndex)
     } else if (newIndex < animationRangeIndices[0] && allowRepeat) {
@@ -125,7 +125,7 @@ const AnimationCombobox = ({
 
   const moveOneFrameForward = (_selectedLogIndex: number, allowRepeat?: boolean) => {
     if (isAnimationOn) return
-    let newIndex = _selectedLogIndex + 1
+    const newIndex = _selectedLogIndex + 1
     if (newIndex >= animationRangeIndices[0] && newIndex <= animationRangeIndices[1]) {
       onLogSelect(logs[newIndex], logs.length - 1 - newIndex)
     } else if (newIndex > animationRangeIndices[1] && allowRepeat) {
@@ -183,7 +183,7 @@ const AnimationCombobox = ({
       await sleep(selectedAnimationSpeed.value)
       if (!isAnimationOnRef.current) break
       
-      let previousSelectedLogIndex = nextSelectedLogIndex
+      const previousSelectedLogIndex = nextSelectedLogIndex
       onLogSelect(logs[nextSelectedLogIndex], logs.length - 1 - nextSelectedLogIndex)
       nextSelectedLogIndex = nextSelectedLogIndex = nextSelectedLogIndex + 1 <= animationRangeIndices[1] ? nextSelectedLogIndex + 1 : repeatRef.current ? animationRangeIndices[0] : animationRangeIndices[1]
       
@@ -410,7 +410,7 @@ const AnimationCombobox = ({
             (averageLogDownloadSpeed === 0 ? numberOfFrames > 10 : (numberOfFrames * averageLogDownloadSpeed > 2 * MINUTE)) && (
               <div className='flex items-start justify-start gap-2 w-full p-2 bg-orange-200 border-[1px] border-orange-300 rounded-sm'>
                 <TriangleAlertIcon className='size-4' />
-                <span className='text-xs'>You're about to load in {numberOfFrames} frames.{' '}
+                <span className='text-xs'>You&apos;re about to load in {numberOfFrames} frames.{' '}
                   {
                     averageLogDownloadSpeed === 0 ? (
                       <span className='font-medium'>This may take a long time.</span>

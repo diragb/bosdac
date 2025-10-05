@@ -145,12 +145,12 @@ const Leaflet = () => {
   const [isFetchingRipCurrentForecastData, setIsFetchingRipCurrentForecastData] = useState(false)
   const [ripCurrentForecastData, setRipCurrentForecastData] = useState<string | null>(null)
   const [isFetchingSnowImages, setIsFetchingSnowImages] = useState(false)
-  const [snowLayerFetchingStatus, setSnowLayerFetchingStatus] = useState<number | boolean>(0)
+  const [, setSnowLayerFetchingStatus] = useState<number | boolean>(0)
   const [snowInfo, setSnowInfo] = useState<MOSDACSnowInfo | null>(null)
   const [snowImages, setSnowImages] = useState<Map<string, string>>(new Map())
   const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
   const [images, setImages] = useState<Map<string, string>>(new Map())
-  const [isFetchingImages, setIsFetchingImages] = useState(false)
+  const [, setIsFetchingImages] = useState(false)
   const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number | boolean>>(new Map())
   const [logs, setLogs] = useState<MOSDACLogData>([])
   const [logDownloadStatus, setLogDownloadStatus] = useState<Map<string, LogDownloadStatus>>(new Map())
@@ -321,7 +321,7 @@ const Leaflet = () => {
   }
 
   const onLogSelect = async (log: MOSDACLog, logIndex: number) => {
-    let previousLog = selectedLog
+    const previousLog = selectedLog
     try {
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
@@ -333,9 +333,9 @@ const Leaflet = () => {
 
       if (logs.length > 0) {
         if (logIndex > logs.length - 1 - animationRangeIndices[0]) {
-          setAnimationRangeIndices(_animationRangeIndices => [(logs.length - 1 - logIndex), animationRangeIndices[1]])
+          setAnimationRangeIndices(_animationRangeIndices => [(logs.length - 1 - logIndex), _animationRangeIndices[1]])
         } else if (logIndex < logs.length - 1 - animationRangeIndices[1]) {
-          setAnimationRangeIndices(_animationRangeIndices => [animationRangeIndices[0], (logs.length - 1 - logIndex)])
+          setAnimationRangeIndices(_animationRangeIndices => [_animationRangeIndices[0], (logs.length - 1 - logIndex)])
         }
       }
 
@@ -388,7 +388,7 @@ const Leaflet = () => {
   }
 
   const onModeSelect = async (newMode: MOSDACImageMode) => {
-    let previousMode = mode
+    const previousMode = mode
     try {
       if (!selectedLog) return
       setModeFetchingStatus(_modeFetchingStatus => {
@@ -924,7 +924,7 @@ const Leaflet = () => {
       storeName: 'bosdac-cache'
     })
 
-    // getMOSDACLogData()
+    getMOSDACLogData()
   }, [])
   
   // Return:
