@@ -17,6 +17,7 @@ const geistSans = Geist({
 
 // Components:
 import { Toaster } from '@/components/ui/sonner'
+import { Analytics } from '@vercel/analytics/next'
 
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
@@ -29,6 +30,7 @@ const App = ({ Component, pageProps }: AppProps) => (
     <main className={`${geistSans.className} font-sans`}>
       <Component {...pageProps} />
       <Toaster />
+      <Analytics />
     </main>
   </>
 )
