@@ -1,9 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# BOSDAC - Better MOSDAC
+
+**BOSDAC** (Better MOSDAC) is a modern, user-friendly web application that provides an enhanced interface for viewing live satellite imagery and meteorological data from ISRO's MOSDAC (Meteorological and Oceanographic Satellite Data Archival Centre).
+
+## Why BOSDAC?
+
+MOSDAC is ISRO's official website for viewing live satellite images of Earth sourced from INSAT-3x satellites. However, the original MOSDAC interface suffers from terrible UI/UX design. BOSDAC addresses this by providing:
+
+- **Modern, intuitive interface** with better user experience
+- **All original MOSDAC features** including satellite imagery, weather data, and forecasts
+- **Enhanced functionality** like timelapse animations and improved data visualization
+- **Better performance** with intelligent caching and optimized data loading
+
+## Features
+
+### Core Satellite Data
+- **Live Satellite Imagery** - Real-time Earth observation from INSAT-3x satellites
+- **Historical Data Access** - Browse through past satellite images with timestamps
+- **Multiple Visualization Modes** - Greyscale, Rainbow, SST, Ferret, NHC color schemes
+
+### Weather & Environmental Layers
+- **Wind Direction & Heatmap** - Real-time wind patterns and velocity visualization
+- **Fire & Smoke Detection** - Active fire points and smoke dispersion tracking
+- **Heavy Rain & Cloudburst** - Precipitation monitoring and forecasting
+- **Snow Cover** - Snow extent mapping and monitoring
+- **Rip Current Forecasts** - Coastal safety information
+
+### Advanced Features
+- **Timelapse Animation** - Create animated sequences of satellite imagery with customizable speed controls
+- **Interactive Map** - Pan, zoom, and explore with Leaflet-based mapping
+- **Layer Management** - Toggle multiple data layers simultaneously
+- **Opacity Controls** - Adjust transparency for better data overlay visualization
+- **Intelligent Caching** - Local storage optimization for faster loading
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Mapping**: Leaflet with React-Leaflet
+- **UI Components**: Radix UI with Tailwind CSS
+- **Data Visualization**: Custom wind vectors, heatmaps, and overlays
+- **Caching**: LocalForage for client-side data persistence
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js >= 18.0.0
+- npm, yarn, pnpm, or bun
 
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/diragb/bosdac.git
+cd bosdac
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+3. Start the development server:
 ```bash
 npm run dev
 # or
@@ -14,27 +74,47 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+### Basic Navigation
+- **Map Interaction**: Pan and zoom using mouse/touch controls
+- **Layer Selection**: Use the "Layers" dropdown to add weather and environmental data
+- **Historical Data**: Select specific timestamps from the "History" dropdown
+- **Animation**: Use the animation controls to create timelapse sequences
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+### Available Layers
+- **Wind Direction**: Real-time wind vector visualization
+- **Wind Heatmap**: Wind intensity heatmap overlay
+- **Fire & Smoke**: Active fire detection points
+- **Fire & Smoke Heatmap**: Fire intensity visualization
+- **Heavy Rain**: Current precipitation data
+- **Heavy Rain Forecast**: Precipitation predictions
+- **Cloudburst Forecast**: Severe weather warnings
+- **Rip Current Forecast**: Coastal hazard information
+- **Snow**: Snow cover extent mapping
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Animation Controls
+- **Play/Pause**: Control timelapse playback
+- **Speed Selection**: Choose from 3m/s to 1h/s animation speeds
+- **Range Selection**: Define start and end points for animations
+- **Repeat Mode**: Loop animations continuously
 
-## Learn More
+## Data Sources
 
-To learn more about Next.js, take a look at the following resources:
+BOSDAC relies on MOSDAC's APIs and services:
+- **Satellite Imagery**: INSAT-3x satellite data via MOSDAC WMS services
+- **Weather Data**: Real-time meteorological data from ISRO
+- **Forecast Data**: Weather predictions and alerts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
-## Deploy on Vercel
+## Acknowledgments
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+- **ISRO** for providing satellite data through MOSDAC.
+- **MOSDAC** for the original data services and APIs.
+- **OpenStreetMap** contributors for base map tiles.
+- **Leaflet** community for mapping capabilities.
