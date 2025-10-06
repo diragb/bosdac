@@ -18,6 +18,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogOverlay,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
@@ -87,10 +88,11 @@ const SettingsDialog = () => {
           Settings
         </Button>
       </DialogTrigger>
-      <DialogContent showCloseButton={false} className={cn('!max-w-screen !w-[600px] p-4', `${geistSans.className} font-sans`)}>
+      <DialogOverlay className='z-[1001]' />
+      <DialogContent showCloseButton={false} className={cn('z-[1001] !max-w-screen !w-[600px] p-4', `${geistSans.className} font-sans`)}>
         <DialogPrimitive.Close
           data-slot='dialog-close'
-          className='ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-6'
+          className='ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-6 cursor-pointer'
         >
           <XIcon />
           <span className='sr-only'>Close</span>

@@ -1,3 +1,8 @@
+// Constants:
+const siteURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+const appName = 'BOSDAC - Better MOSDAC'
+const appDescription = 'Modern, user-friendly interface for viewing live satellite imagery and meteorological data from ISRO\'s MOSDAC.'
+
 // Components:
 import {
   Html,
@@ -7,10 +12,6 @@ import {
 } from 'next/document'
 
 // Functions:
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-const appName = 'BOSDAC - Better MOSDAC'
-const appDescription = 'Modern, user-friendly interface for viewing live satellite imagery and meteorological data from ISRO\'s MOSDAC.'
-
 const Document = () => (
   <Html lang='en'>
     <Head>
@@ -20,23 +21,25 @@ const Document = () => (
       <meta name='application-name' content='BOSDAC' />
       <meta name='theme-color' content='#0f172a' />
       <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
+      <meta name='image' content={`${siteURL}/og-square.jpg`} />
 
       {/* Canonical */}
-      <link rel='canonical' href={siteUrl} />
+      <link rel='canonical' href={siteURL} />
 
       {/* Favicons */}
       <link rel='icon' href='/favicon.ico' />
 
       {/* Open Graph / Facebook */}
       <meta property='og:type' content='website' />
-      <meta property='og:url' content={siteUrl} />
+      <meta property='og:url' content={siteURL} />
+      <meta property='og:site_name' content={appName} />
       <meta property='og:title' content={appName} />
       <meta property='og:description' content={appDescription} />
-      <meta property='og:image' content={`${siteUrl}/og-image.jpg`} />
+      <meta property='og:image' content={`${siteURL}/og-image.jpg`} />
       <meta property='og:image:width' content='1200' />
       <meta property='og:image:height' content='630' />
       <meta property='og:image:alt' content='BOSDAC - Better MOSDAC' />
-      <meta property='og:image' content={`${siteUrl}/og-square.jpg`} />
+      <meta property='og:image' content={`${siteURL}/og-square.jpg`} />
       <meta property='og:image:width' content='1200' />
       <meta property='og:image:height' content='1200' />
 
@@ -44,7 +47,8 @@ const Document = () => (
       <meta name='twitter:title' content={appName} />
       <meta name='twitter:description' content={appDescription} />
       <meta name='twitter:card' content='summary_large_image' />
-      <meta name='twitter:image' content={`${siteUrl}/twitter-image.jpg`} />
+      <meta name='twitter:creator' content='diragb' />
+      <meta name='twitter:image' content={`${siteURL}/twitter-image.jpg`} />
       <meta name='twitter:image:alt' content='BOSDAC - Better MOSDAC' />
 
       {/* JSON-LD Structured Data */}
@@ -56,7 +60,7 @@ const Document = () => (
             '@type': 'WebApplication',
             name: 'BOSDAC',
             alternateName: 'Better MOSDAC',
-            url: siteUrl,
+            url: siteURL,
             applicationCategory: 'Weather',
             operatingSystem: 'Web',
             description: appDescription,

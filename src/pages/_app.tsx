@@ -23,6 +23,7 @@ import { Analytics } from '@vercel/analytics/next'
 const App = ({ Component, pageProps }: AppProps) => (
   <>
     <Head>
+      <meta charSet='utf-8' />
       <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
       <meta name='apple-mobile-web-app-capable' content='yes' />
       <meta name='mobile-web-app-capable' content='yes' />

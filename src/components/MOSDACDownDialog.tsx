@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogOverlay,
   DialogTitle,
 } from '@/components/ui/dialog'
 
@@ -30,7 +31,8 @@ const MOSDACDownDialog = ({
   onOpenChange: DialogProps['onOpenChange']
 }) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogContent className={cn(`${geistSans.className} font-sans`)}>
+    <DialogOverlay className='z-[1001]' />
+    <DialogContent className={cn('z-[1001]', `${geistSans.className} font-sans`)}>
       <DialogHeader>
         <DialogTitle>MOSDAC servers are down</DialogTitle>
         <DialogDescription>
