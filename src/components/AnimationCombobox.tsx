@@ -1,16 +1,27 @@
 // Packages:
-import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import prettyMilliseconds from 'pretty-ms'
-import sleep from 'sleep-promise'
 
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
 import { LogDownloadStatus } from '@/components/SidePanel'
 
 // Assets:
-import { CheckIcon, ChevronDownIcon, ChevronsLeftIcon, ChevronsRightIcon, PauseIcon, PlayIcon, RepeatIcon, SquareIcon, TimerIcon, TriangleAlertIcon, TriangleIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  PauseIcon,
+  PlayIcon,
+  RepeatIcon,
+  SquareIcon,
+  TimerIcon,
+  TriangleAlertIcon,
+  TriangleIcon,
+} from 'lucide-react'
 
 // Constants:
 import { ANIMATION_SPEEDS } from '@/components/SidePanel'
@@ -48,7 +59,6 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 // Functions:
 const AnimationContent = ({
-  useSmallView,
   reversedLogs,
   selectedReversedLogIndex,
   onLogSelect,

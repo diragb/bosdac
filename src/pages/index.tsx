@@ -898,7 +898,7 @@ const Leaflet = () => {
     await sleep(LONG_PRESS_DELAY)
     
     if (isLongPressingRef.current === null || isLongPressingRef.current !== direction) {
-      let nextSelectedReversedLogIndex = direction === 'forward' ?
+      const nextSelectedReversedLogIndex = direction === 'forward' ?
         (_selectedReversedLogIndex + 1 <= animationRangeIndices[1] ? _selectedReversedLogIndex + 1 : repeatRef.current ? animationRangeIndices[0] : animationRangeIndices[1]) :
         (_selectedReversedLogIndex - 1 >= animationRangeIndices[0] ? _selectedReversedLogIndex - 1 : repeatRef.current ? animationRangeIndices[1] : animationRangeIndices[0])
       
