@@ -1,14 +1,8 @@
 'use client'
 
 // Packages:
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import axios from 'axios'
-import localforage from 'localforage'
-import toFirePoint from '@/lib/toFirePoint'
-import toWindVelocityFormat from '@/lib/toWindVelocityFormat'
-import { toast } from 'sonner'
-import processCloudburstHeavyRain from '@/lib/processCloudburstHeavyRain'
-import { Box } from '@/lib/box'
+import React from 'react'
+import { cn } from '@/lib/utils'
 
 // Typescript:
 export enum LogDownloadStatus {
@@ -17,19 +11,8 @@ export enum LogDownloadStatus {
   FAILED_TO_DOWNLOAD = 2,
 }
 
-import type { MOSDACWindDirectionData } from '../pages/api/wind-direction'
 import type { MOSDACLogData, MOSDACLog } from '../pages/api/log'
 import { MOSDACImageMode } from '../pages/api/history'
-import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
-import type { MOSDACFireSmoke } from '../pages/api/fire-smoke'
-import type { FirePoint } from '@/lib/toFirePoint'
-import type { HeatLatLngTuple } from 'leaflet'
-import type { MOSDACCloudburstAndHeavyRain } from '../pages/api/cloudburst-and-heavy-rain'
-import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
-import type { MOSDACSnowInfo } from '../pages/api/snow-info'
-
-// Assets:
-import { FrownIcon } from 'lucide-react'
 
 // Constants:
 export const ANIMATION_SPEEDS = [
@@ -60,23 +43,6 @@ export const ANIMATION_SPEEDS = [
   },
 ]
 
-const MONTH_TO_NUM: Record<string, number> = {
-  JAN: 1,
-  FEB: 2,
-  MAR: 3,
-  APR: 4,
-  MAY: 5,
-  JUN: 6,
-  JUL: 7,
-  AUG: 8,
-  SEP: 9,
-  OCT: 10,
-  NOV: 11,
-  DEC: 12,
-}
-
-import { BOXES } from '@/lib/box'
-
 // Components:
 import LayersCombobox, { Layer } from '@/components/LayersCombobox'
 import HistoryCombobox from '@/components/HistoryCombobox'
@@ -87,832 +53,107 @@ import SettingsDialog from '@/components/SettingsDialog'
 
 // Functions:
 const SidePanel = ({
-  setIsMOSDACDownDialogOpen,
+  useSmallView,
+  toggleSmallViewDialog,
   layers,
   setLayers,
-  windDirectionData,
-  setWindDirectionData,
-  fireSmokeData,
-  setFireSmokeData,
-  fireSmokeHeatmapData,
-  setFireSmokeHeatmapData,
-  cloudburstHeavyRainData,
-  setCloudburstHeavyRainData,
-  ripCurrentForecastData,
-  setRipCurrentForecastData,
-  snowInfo,
-  setSnowInfo,
-  snowImages,
-  setSnowImages,
-  images,
-  setImages,
   selectedLog,
-  setSelectedLog,
   mode,
-  setMode,
   opacity,
   setOpacity,
+  modeFetchingStatus,
+  logs,
+  reversedLogs,
+  onLogSelect,
+  historicalLogsFetchingStatus,
+  isHistoryOn,
+  setIsHistoryOn,
+  logDownloadStatus,
+  averageLogDownloadSpeed,
+  selectedLogIndex,
+  animationRangeIndices,
+  setAnimationRangeIndices,
+  layerFetchingStatus,
+  onWindDirectionLayerSelect,
+  onWindHeatmapLayerSelect,
+  onFireSmokeLayerSelect,
+  onFireSmokeHeatmapLayerSelect,
+  onHeavyRainLayerSelect,
+  onHeavyRainForecastLayerSelect,
+  onCloudburstForecastLayerSelect,
+  onRipCurrentForecastLayerSelect,
+  onSnowLayerSelect,
+  isAnimationOn,
+  setIsAnimationOn,
+  selectedAnimationSpeed,
+  setSelectedAnimationSpeed,
+  onModeSelect,
+  repeat,
+  setRepeat,
+  repeatRef,
+  startLongPress,
+  stopLongPress,
+  isLongPressing,
+  pause,
+  play,
+  stop,
 }: {
-  setIsMOSDACDownDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  useSmallView: boolean
+  toggleSmallViewDialog: (state: boolean) => Promise<void>
   layers: Layer[]
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
-  windDirectionData: MOSDACWindVelocity | null
-  setWindDirectionData: React.Dispatch<React.SetStateAction<MOSDACWindVelocity | null>>
-  fireSmokeData: FirePoint[] | null
-  setFireSmokeData: React.Dispatch<React.SetStateAction<FirePoint[] | null>>
-  fireSmokeHeatmapData: HeatLatLngTuple[] | null
-  setFireSmokeHeatmapData: React.Dispatch<React.SetStateAction<HeatLatLngTuple[] | null>>
-  cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
-  setCloudburstHeavyRainData: React.Dispatch<React.SetStateAction<CloudburstHeavyRainProcessedData | null>>
-  ripCurrentForecastData: string | null
-  setRipCurrentForecastData: React.Dispatch<React.SetStateAction<string | null>>
-  snowInfo: MOSDACSnowInfo | null
-  setSnowInfo: React.Dispatch<React.SetStateAction<MOSDACSnowInfo | null>>
-  snowImages: Map<string, string>
-  setSnowImages: React.Dispatch<React.SetStateAction<Map<string, string>>>
-  images: Map<string, string>
-  setImages: React.Dispatch<React.SetStateAction<Map<string, string>>>
   selectedLog: MOSDACLog | null
-  setSelectedLog: React.Dispatch<React.SetStateAction<MOSDACLog | null>>
   mode: MOSDACImageMode
-  setMode: React.Dispatch<React.SetStateAction<MOSDACImageMode>>
   opacity: number
   setOpacity: React.Dispatch<React.SetStateAction<number>>
+  modeFetchingStatus: Map<MOSDACImageMode, number | boolean>
+  logs: MOSDACLogData
+  reversedLogs: MOSDACLogData
+  onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
+  historicalLogsFetchingStatus: Map<string, number | boolean>
+  isHistoryOn: boolean
+  setIsHistoryOn: React.Dispatch<React.SetStateAction<boolean>>
+  logDownloadStatus: Map<string, LogDownloadStatus>
+  averageLogDownloadSpeed: number
+  selectedLogIndex: number
+  animationRangeIndices: [number, number]
+  setAnimationRangeIndices: React.Dispatch<React.SetStateAction<[number, number]>>
+  layerFetchingStatus: Map<Layer, boolean>
+  onWindDirectionLayerSelect: () => Promise<void>
+  onWindHeatmapLayerSelect: () => Promise<void>
+  onFireSmokeLayerSelect: () => Promise<void>
+  onFireSmokeHeatmapLayerSelect: () => Promise<void>
+  onHeavyRainLayerSelect: () => Promise<void>
+  onHeavyRainForecastLayerSelect: () => Promise<void>
+  onCloudburstForecastLayerSelect: () => Promise<void>
+  onRipCurrentForecastLayerSelect: () => Promise<void>
+  onSnowLayerSelect: () => Promise<void>
+  isAnimationOn: boolean
+  setIsAnimationOn: React.Dispatch<React.SetStateAction<boolean>>
+  selectedAnimationSpeed: typeof ANIMATION_SPEEDS[number]
+  setSelectedAnimationSpeed: React.Dispatch<React.SetStateAction<typeof ANIMATION_SPEEDS[number]>>
+  onModeSelect: (newMode: MOSDACImageMode) => Promise<void>
+  repeat: boolean
+  setRepeat: React.Dispatch<React.SetStateAction<boolean>>
+  repeatRef: React.MutableRefObject<boolean>
+  startLongPress: (direction: 'forward' | 'backward', _selectedLogIndex: number) => Promise<void>
+  stopLongPress: () => void
+  isLongPressing: 'forward' | 'backward' | null
+  pause: () => void
+  play: () => Promise<void>
+  stop: () => void
 }) => {
-  // Ref:
-  const activeNetworkRequestsRef = useRef(0)
-
-  // State:
-  const [isFetchingWindDirectionData, setIsFetchingWindDirectionData] = useState(false)
-  const [isFetchingFireSmokeData, setIsFetchingFireSmokeData] = useState(false)
-  const [isFetchingCloudburstHeavyRainData, setIsFetchingCloudburstHeavyRainData] = useState(false)
-  const [isFetchingRipCurrentForecastData, setIsFetchingRipCurrentForecastData] = useState(false)
-  const [isFetchingSnowImages, setIsFetchingSnowImages] = useState(false)
-  const [, setSnowLayerFetchingStatus] = useState<number | boolean>(0)
-  const [layerFetchingStatus, setLayerFetchingStatus] = useState<Map<Layer, boolean>>(new Map())
-  const [, setIsFetchingImages] = useState(false)
-  const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number | boolean>>(new Map())
-  const [logs, setLogs] = useState<MOSDACLogData>([])
-  const [logDownloadStatus, setLogDownloadStatus] = useState<Map<string, LogDownloadStatus>>(new Map())
-  const [numberOfLogsDownloaded, setNumberOfLogsDownloaded] = useState(0)
-  const [averageLogDownloadSpeed, setAverageLogDownloadSpeed] = useState(0)
-  const [selectedLogIndex, setSelectedLogIndex] = useState(0)
-  const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number | boolean>>(new Map())
-  const [isAnimationOn, setIsAnimationOn] = useState(false)
-  const [animationRangeIndices, setAnimationRangeIndices] = useState<[number, number]>([0, 0])
-  const [selectedAnimationSpeed, setSelectedAnimationSpeed] = useState<typeof ANIMATION_SPEEDS[number]>(ANIMATION_SPEEDS[0])
-
-  // Memo:
-  const reversedLogs = useMemo(() => [...logs].reverse(), [logs])
-
-  // Functions:
-  const toSortableKey = (log: MOSDACLog) => {
-    const year = parseInt(log.when.year, 10)
-    const month = MONTH_TO_NUM[log.when.month.toUpperCase()] ?? 0
-    const date = parseInt(log.when.date, 10)
-
-    const time = log.when.time.padStart(4, '0')
-    const hours = parseInt(time.slice(0, 2), 10)
-    const minutes = parseInt(time.slice(2), 10)
-
-    return year * 1e8 + month * 1e6 + date * 1e4 + hours * 1e2 + minutes
-  }
-
-  const sortLogs = (logs: MOSDACLogData) => {
-    return [...logs].sort((a, b) => toSortableKey(b) - toSortableKey(a))
-  }
-
-  const getMOSDACLogData = async () => {
-    try {
-      const { data } = await axios.get('/api/log')
-      if (Array.isArray(data)) {
-        const sortedLogs = sortLogs(data)
-        setLogs(sortedLogs)
-        setSelectedLog(sortedLogs[0])
-        setSelectedLogIndex(sortedLogs.length - 1)
-        setAnimationRangeIndices([sortedLogs.length - 1 - 10, sortedLogs.length - 1])
-        onLogSelect(sortedLogs[0], 0)
-      }
-      else throw new Error(data)
-    } catch (error) {
-      console.error(`Upstream is fucked`, error)
-      setIsMOSDACDownDialogOpen(true)
-    }
-  }
-
-  const getMOSDACImageURL = (box: Box, log: MOSDACLog, mode: MOSDACImageMode) => {
-    return `/api/history?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
-  }
-
-  const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log'): Promise<number | null> => {
-    try {
-      let fetchedImageCount = 0
-      const existingImages = new Map(images)
-      const requests: Array<Promise<{ key: string, url: string }>> = []
-      let usedAnyCachedImage = false
-      let networkDownloadStarted = false
-      let networkDownloadStartTime = 0
-      let wasContendedAtStart = false
-
-      for (const boxRow of BOXES) {
-        for (const box of boxRow) {
-          const key = box.bbox + mode + log.when.formatted
-          if (existingImages.has(key)) {
-            usedAnyCachedImage = true
-            continue
-          }
-
-          const imageURL = getMOSDACImageURL(box, log, mode)
-          const request = new Promise<{ key: string, url: string }>(resolve => {
-            localforage.getItem<Blob>(key).then(image => {
-              if (image !== null) {
-                usedAnyCachedImage = true
-                resolve({ key, url: URL.createObjectURL(image) })
-              }
-              else {
-                if (!networkDownloadStarted) {
-                  networkDownloadStarted = true
-                  wasContendedAtStart = activeNetworkRequestsRef.current > 0
-                  networkDownloadStartTime = (typeof performance !== 'undefined' ? performance.now() : Date.now())
-                }
-                activeNetworkRequestsRef.current++
-                axios
-                  .get<Blob>(imageURL, { responseType: 'blob' })
-                  .then(({ data }) => {
-                    try {
-                      localforage.setItem(key, data)
-                    } catch (error) {
-                      if (
-                        (error as Error).name.includes('QuotaExceededError') ||
-                        (error as Error).message.includes('QuotaExceededError')
-                      ) {
-                        localforage.clear()
-                      }
-                    }
-
-                    resolve({ key, url: URL.createObjectURL(data) })
-                  })
-                  .finally(() => {
-                    activeNetworkRequestsRef.current--
-                  })
-              }
-            })
-          })
-          requests.push(request)
-        }
-      }
-
-      if (requests.length > 0) setIsFetchingImages(true)
-
-      for (const request of requests) {
-        request.then(({ key, url }) => {
-          if (forProperty === 'log') {
-            setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-              const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-              newHistoricalLogsFetchingStatus.set(log.name, ++fetchedImageCount/requests.length)
-              return newHistoricalLogsFetchingStatus
-            })
-          } else if (forProperty === 'mode') {
-            setModeFetchingStatus(_modeFetchingStatus => {
-              const newModeFetchingStatus = new Map(_modeFetchingStatus)
-              newModeFetchingStatus.set(mode, ++fetchedImageCount/requests.length)
-              return newModeFetchingStatus
-            })
-          }
-          setImages(prev => {
-            const next = new Map(prev)
-            next.set(key, url)
-            return next
-          })
-        }).catch(() => {
-        })
-      }
-
-      await Promise.allSettled(requests)
-
-      if (usedAnyCachedImage || !networkDownloadStarted || wasContendedAtStart) return null
-
-      const networkDownloadEndTime = (typeof performance !== 'undefined' ? performance.now() : Date.now())
-      return Math.round(networkDownloadEndTime - networkDownloadStartTime)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsFetchingImages(false)
-    }
-    return null
-  }
-
-  const onLogSelect = async (log: MOSDACLog, logIndex: number) => {
-    const previousLog = selectedLog
-    try {
-      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.set(log.name, 0)
-        return newHistoricalLogsFetchingStatus
-      })
-      setSelectedLog(log)
-      setSelectedLogIndex(logIndex)
-
-      if (logs.length > 0) {
-        if (logIndex > logs.length - 1 - animationRangeIndices[0]) {
-          setAnimationRangeIndices(_animationRangeIndices => [(logs.length - 1 - logIndex), _animationRangeIndices[1]])
-        } else if (logIndex < logs.length - 1 - animationRangeIndices[1]) {
-          setAnimationRangeIndices(_animationRangeIndices => [_animationRangeIndices[0], (logs.length - 1 - logIndex)])
-        }
-      }
-
-      setLogDownloadStatus(_logDownloadStatus => {
-        const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADING)
-        return newLogDownloadStatus
-      })
-      const totalSpeed = (await fetchMOSDACImages(log, mode, 'log'))
-      if (totalSpeed !== null) {
-        setAverageLogDownloadSpeed(_averageLogDownloadSpeed => (
-          ((_averageLogDownloadSpeed * numberOfLogsDownloaded) + totalSpeed) / (numberOfLogsDownloaded + 1)
-        ))
-        setNumberOfLogsDownloaded(_numberOfLogsDownloaded => _numberOfLogsDownloaded + 1)
-      }
-      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.delete(log.name)
-        return newHistoricalLogsFetchingStatus
-      })
-      setLogDownloadStatus(_logDownloadStatus => {
-        const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADED)
-        return newLogDownloadStatus
-      })
-    } catch (error) {
-      console.error(error)
-      toast.error(
-        'We\'re not able to load data for this log at the moment. Sorry!',
-        {
-          position: 'top-right',
-          icon: <FrownIcon className='size-4' />,
-          style: {
-            width: 'max-content',
-          }
-        }
-      )
-      setSelectedLog(previousLog)
-      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.set(log.name, false)
-        return newHistoricalLogsFetchingStatus
-      })
-      setLogDownloadStatus(_logDownloadStatus => {
-        const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
-        return newLogDownloadStatus
-      })
-    }
-  }
-
-  const onModeSelect = async (newMode: MOSDACImageMode) => {
-    const previousMode = mode
-    try {
-      if (!selectedLog) return
-      setModeFetchingStatus(_modeFetchingStatus => {
-        const newModeFetchingStatus = new Map(_modeFetchingStatus)
-        newModeFetchingStatus.set(newMode, 0)
-        return newModeFetchingStatus
-      })
-      setMode(newMode)
-      await fetchMOSDACImages(selectedLog, newMode, 'mode')
-      setModeFetchingStatus(_modeFetchingStatus => {
-        const newModeFetchingStatus = new Map(_modeFetchingStatus)
-        newModeFetchingStatus.delete(newMode)
-        return newModeFetchingStatus
-      })
-    } catch (error) {
-      console.error(error)
-      toast.error(
-        'We\'re not able to load data for this mode at the moment. Sorry!',
-        {
-          position: 'top-right',
-          icon: <FrownIcon className='size-4' />,
-          style: {
-            width: 'max-content',
-          }
-        }
-      )
-      setMode(previousMode)
-      setModeFetchingStatus(_modeFetchingStatus => {
-        const newModeFetchingStatus = new Map(_modeFetchingStatus)
-        newModeFetchingStatus.set(newMode, false)
-        return newModeFetchingStatus
-      })
-    }
-  }
-
-  const onWindDirectionLayerSelect = async () => {
-    if (windDirectionData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.WIND_DIRECTION, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingWindDirectionData) return
-        setIsFetchingWindDirectionData(true)
-        const response = await axios.get<MOSDACWindDirectionData>('/api/wind-direction')
-        setWindDirectionData(toWindVelocityFormat(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.WIND_DIRECTION)
-          newLayerFetchingStatus.delete(Layer.WIND_HEATMAP)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-        toast.error(
-          'We\'re not able to load data for wind at the moment. Sorry!',
-          {
-            position: 'top-right',
-            icon: <FrownIcon className='size-4' />,
-            style: {
-              width: 'max-content',
-            }
-          }
-        )
-        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.WIND_DIRECTION && layerID !== Layer.WIND_HEATMAP)))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.WIND_DIRECTION)) newLayerFetchingStatus.set(Layer.WIND_DIRECTION, false)
-          if (newLayerFetchingStatus.get(Layer.WIND_HEATMAP)) newLayerFetchingStatus.set(Layer.WIND_HEATMAP, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingWindDirectionData(false)
-      }
-    }
-  }
-
-  const onWindHeatmapLayerSelect = async () => {
-    if (windDirectionData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.WIND_HEATMAP, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingWindDirectionData) return
-        setIsFetchingWindDirectionData(true)
-        const response = await axios.get<MOSDACWindDirectionData>('/api/wind-direction')
-        setWindDirectionData(toWindVelocityFormat(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.WIND_DIRECTION)
-          newLayerFetchingStatus.delete(Layer.WIND_HEATMAP)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-        toast.error(
-          'We\'re not able to load data for wind at the moment. Sorry!',
-          {
-            position: 'top-right',
-            icon: <FrownIcon className='size-4' />,
-            style: {
-              width: 'max-content',
-            }
-          }
-        )
-        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.WIND_DIRECTION && layerID !== Layer.WIND_HEATMAP)))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.WIND_DIRECTION)) newLayerFetchingStatus.set(Layer.WIND_DIRECTION, false)
-          if (newLayerFetchingStatus.get(Layer.WIND_HEATMAP)) newLayerFetchingStatus.set(Layer.WIND_HEATMAP, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingWindDirectionData(false)
-      }
-    }
-  }
-
-  const onFireSmokeLayerSelect = async () => {
-    if (fireSmokeData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.FIRE_SMOKE, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingFireSmokeData) return
-        setIsFetchingFireSmokeData(true)
-        const response = await axios.get<MOSDACFireSmoke>('/api/fire-smoke')
-        setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
-        setFireSmokeHeatmapData(
-          response.data.features
-            .map((feature, index) => toFirePoint(index, feature))
-            .map(fireSmokeDatum => [fireSmokeDatum.lat, fireSmokeDatum.lng, 0.7])
-        )
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE)
-          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE_HEATMAP)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-        toast.error(
-          'We\'re not able to load data for fire & smoke at the moment. Sorry!',
-          {
-            position: 'top-right',
-            icon: <FrownIcon className='size-4' />,
-            style: {
-              width: 'max-content',
-            }
-          }
-        )
-        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.FIRE_SMOKE && layerID !== Layer.FIRE_SMOKE_HEATMAP)))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE, false)
-          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE_HEATMAP)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingFireSmokeData(false)
-      }
-    }
-  }
-
-  const onFireSmokeHeatmapLayerSelect = async () => {
-    if (fireSmokeHeatmapData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingFireSmokeData) return
-        setIsFetchingFireSmokeData(true)
-        const response = await axios.get<MOSDACFireSmoke>('/api/fire-smoke')
-        setFireSmokeData(response.data.features.map((feature, index) => toFirePoint(index, feature)))
-        setFireSmokeHeatmapData(
-          response.data.features
-            .map((feature, index) => toFirePoint(index, feature))
-            .map(fireSmokeDatum => [fireSmokeDatum.lat, fireSmokeDatum.lng, 0.7])
-        )
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE)
-          newLayerFetchingStatus.delete(Layer.FIRE_SMOKE_HEATMAP)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-        toast.error(
-          'We\'re not able to load data for fire & smoke at the moment. Sorry!',
-          {
-            position: 'top-right',
-            icon: <FrownIcon className='size-4' />,
-            style: {
-              width: 'max-content',
-            }
-          }
-        )
-        setLayers(_layers => _layers.filter(layerID => (layerID !== Layer.FIRE_SMOKE && layerID !== Layer.FIRE_SMOKE_HEATMAP)))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE, false)
-          if (newLayerFetchingStatus.get(Layer.FIRE_SMOKE_HEATMAP)) newLayerFetchingStatus.set(Layer.FIRE_SMOKE_HEATMAP, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingFireSmokeData(false)
-      }
-    }
-  }
-
-  const onHeavyRainLayerSelect = async () => {
-    if (cloudburstHeavyRainData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.HEAVY_RAIN, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingCloudburstHeavyRainData) return
-        setIsFetchingCloudburstHeavyRainData(true)
-        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
-        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
-          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-          toast.error(
-            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
-            {
-              position: 'top-right',
-              icon: <FrownIcon className='size-4' />,
-              style: {
-                width: 'max-content',
-              }
-            }
-          )
-        setLayers(_layers => _layers.filter(layerID => (
-          layerID !== Layer.HEAVY_RAIN &&
-          layerID !== Layer.HEAVY_RAIN_FORECAST &&
-          layerID !== Layer.CLOUDBURST_FORECAST
-        )))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
-          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingCloudburstHeavyRainData(false)
-      }
-    }
-  }
-
-  const onHeavyRainForecastLayerSelect = async () => {
-    if (cloudburstHeavyRainData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingCloudburstHeavyRainData) return
-        setIsFetchingCloudburstHeavyRainData(true)
-        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
-        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
-          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-          toast.error(
-            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
-            {
-              position: 'top-right',
-              icon: <FrownIcon className='size-4' />,
-              style: {
-                width: 'max-content',
-              }
-            }
-          )
-        setLayers(_layers => _layers.filter(layerID => (
-          layerID !== Layer.HEAVY_RAIN &&
-          layerID !== Layer.HEAVY_RAIN_FORECAST &&
-          layerID !== Layer.CLOUDBURST_FORECAST
-        )))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
-          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingCloudburstHeavyRainData(false)
-      }
-    }
-  }
-
-  const onCloudburstForecastLayerSelect = async () => {
-    if (cloudburstHeavyRainData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingCloudburstHeavyRainData) return
-        setIsFetchingCloudburstHeavyRainData(true)
-        const response = await axios.get<MOSDACCloudburstAndHeavyRain>('/api/cloudburst-and-heavy-rain')
-        setCloudburstHeavyRainData(processCloudburstHeavyRain(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN)
-          newLayerFetchingStatus.delete(Layer.HEAVY_RAIN_FORECAST)
-          newLayerFetchingStatus.delete(Layer.CLOUDBURST_FORECAST)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-          toast.error(
-            'We\'re not able to load data for cloudburst and heavy rain at the moment. Sorry!',
-            {
-              position: 'top-right',
-              icon: <FrownIcon className='size-4' />,
-              style: {
-                width: 'max-content',
-              }
-            }
-          )
-        setLayers(_layers => _layers.filter(layerID => (
-          layerID !== Layer.HEAVY_RAIN &&
-          layerID !== Layer.HEAVY_RAIN_FORECAST &&
-          layerID !== Layer.CLOUDBURST_FORECAST
-        )))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN, false)
-          if (newLayerFetchingStatus.get(Layer.HEAVY_RAIN_FORECAST)) newLayerFetchingStatus.set(Layer.HEAVY_RAIN_FORECAST, false)
-          if (newLayerFetchingStatus.get(Layer.CLOUDBURST_FORECAST)) newLayerFetchingStatus.set(Layer.CLOUDBURST_FORECAST, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingCloudburstHeavyRainData(false)
-      }
-    }
-  }
-
-  const onRipCurrentForecastLayerSelect = async () => {
-    if (ripCurrentForecastData === null) {
-      try {
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.RIP_CURRENT_FORECAST, true)
-          return newLayerFetchingStatus
-        })
-        if (isFetchingRipCurrentForecastData) return
-        setIsFetchingRipCurrentForecastData(true)
-        const now = new Date()
-        const currentDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${(now.getDate()).toString().padStart(2, '0')}`
-        const currentLocalHour = (now.getHours()).toString().padStart(2, '0')
-        const response = await axios.get<Blob>(`/api/rip-current-forecast?date=${currentDate}&hour=${currentLocalHour}`, { responseType: 'blob' })
-        setRipCurrentForecastData(URL.createObjectURL(response.data))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.delete(Layer.RIP_CURRENT_FORECAST)
-          return newLayerFetchingStatus
-        })
-      } catch (error) {
-        console.error(error)
-          toast.error(
-            'We\'re not able to load data for rip current forecast at the moment. Sorry!',
-            {
-              position: 'top-right',
-              icon: <FrownIcon className='size-4' />,
-              style: {
-                width: 'max-content',
-              }
-            }
-          )
-        setLayers(_layers => _layers.filter(layerID => layerID !== Layer.RIP_CURRENT_FORECAST))
-        setLayerFetchingStatus(_layerFetchingStatus => {
-          const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-          newLayerFetchingStatus.set(Layer.RIP_CURRENT_FORECAST, false)
-          return newLayerFetchingStatus
-        })
-      } finally {
-        setIsFetchingRipCurrentForecastData(false)
-      }
-    }
-  }
-
-  const getMOSDACSnowImageURL = (box: Box, _snowInfo: MOSDACSnowInfo) => {
-    return `/api/snow?bbox=${box.bbox}&time=${_snowInfo.time}&date=${_snowInfo.date}&month=${_snowInfo.month}&year=${_snowInfo.year}`
-  }
-
-  const fetchMOSDACSnowImages = async (_snowInfo: MOSDACSnowInfo) => {
-    let fetchedSnowImageCount = 0
-    const existingImages = new Map(snowImages)
-    const requests: Array<Promise<{ key: string, url: string }>> = []
-    let failedRequestCount = 0
-
-    for (const boxRow of BOXES) {
-      for (const box of boxRow) {
-        const key = box.bbox + mode + _snowInfo.time + _snowInfo.date + _snowInfo.month + _snowInfo.year + 'SNOW'
-        if (existingImages.has(key)) continue
-
-        const snowImageURL = getMOSDACSnowImageURL(box, _snowInfo)
-        const request = new Promise<{ key: string, url: string }>((resolve, reject) => {
-          localforage.getItem<Blob>(key).then(snowImage => {
-            if (snowImage !== null) resolve({ key, url: URL.createObjectURL(snowImage) })
-            else {
-              axios
-                .get<Blob>(snowImageURL, { responseType: 'blob' })
-                .then(({ data }) => {
-                  try {
-                    localforage.setItem(key, data)
-                  } catch (error) {
-                    if (
-                      (error as Error).name.includes('QuotaExceededError') ||
-                      (error as Error).message.includes('QuotaExceededError')
-                    ) {
-                      localforage.clear()
-                    }
-                  }
-
-                  resolve({ key, url: URL.createObjectURL(data) })
-                })
-                .catch(() => {
-                  failedRequestCount++
-                  reject()
-                })
-            }
-          })
-        })
-        requests.push(request)
-      }
-    }
-
-    if (requests.length > 0) setIsFetchingSnowImages(true)
-
-    for (const request of requests) {
-      request
-        .then(({ key, url }) => {
-          setSnowLayerFetchingStatus(++fetchedSnowImageCount/requests.length)
-          setSnowImages(prev => {
-            const next = new Map(prev)
-            next.set(key, url)
-            return next
-          })
-        })
-        .catch(() => {})
-    }
-
-    await Promise.allSettled(requests)
-
-    if (failedRequestCount > 0 && requests.length > 0) {
-      throw new Error('Failed to fetch snow cover images!')
-    }
-  }
-
-  const onSnowLayerSelect = async () => {
-    if (snowImages.size > 0 || isFetchingSnowImages) return
-
-    try {
-      setLayerFetchingStatus(_layerFetchingStatus => {
-        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-        newLayerFetchingStatus.set(Layer.SNOW, true)
-        return newLayerFetchingStatus
-      })
-
-      setSnowLayerFetchingStatus(0)
-      let _snowInfo: null | MOSDACSnowInfo = null
-      if (snowInfo === null) {
-        const response = await axios.get<MOSDACSnowInfo>('/api/snow-info')
-        setSnowInfo(response.data)
-        _snowInfo = response.data
-      } else {
-        _snowInfo = snowInfo
-      }
-      
-      await fetchMOSDACSnowImages(_snowInfo)
-      setLayerFetchingStatus(_layerFetchingStatus => {
-        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-        newLayerFetchingStatus.delete(Layer.SNOW)
-        return newLayerFetchingStatus
-      })
-      setSnowLayerFetchingStatus(0)
-    } catch (error) {
-      console.error(error)
-      toast.error(
-        'We\'re not able to load data for snow cover at the moment. Sorry!',
-        {
-          position: 'top-right',
-          icon: <FrownIcon className='size-4' />,
-          style: {
-            width: 'max-content',
-          }
-        }
-      )
-      setLayers(_layers => _layers.filter(layerID => layerID !== Layer.SNOW))
-      setLayerFetchingStatus(_layerFetchingStatus => {
-        const newLayerFetchingStatus = new Map(_layerFetchingStatus)
-        newLayerFetchingStatus.set(Layer.SNOW, false)
-        return newLayerFetchingStatus
-      })
-    } finally {
-      setIsFetchingSnowImages(false)
-    }
-  }
-
-  // Effects:
-  useEffect(() => {
-    localforage.config({
-      driver: localforage.INDEXEDDB,
-      name: 'bosdac',
-      storeName: 'bosdac-cache'
-    })
-
-    getMOSDACLogData()
-  }, [])
-
   // Return:
   return (
-    <div className='absolute left-3 top-3 z-[1001] flex justify-center items-center flex-col gap-2 w-48 p-3 bg-white rounded-md'>
+    <div
+      className={cn(
+        'z-[1001] flex justify-center items-center flex-col gap-2 w-48 p-3 bg-white rounded-md',
+        !useSmallView && 'absolute left-3 top-3',
+      )}
+    >
       <LayersCombobox
+        useSmallView={useSmallView}
+        toggleSmallViewDialog={toggleSmallViewDialog}
         layers={layers}
         setLayers={setLayers}
         layerFetchingStatus={layerFetchingStatus}
@@ -927,25 +168,42 @@ const SidePanel = ({
         onSnowLayerSelect={onSnowLayerSelect}
       />
       <HistoryCombobox
+        useSmallView={useSmallView}
+        toggleSmallViewDialog={toggleSmallViewDialog}
         logs={logs}
         selectedLog={selectedLog}
         onSelect={onLogSelect}
         historicalLogsFetchingStatus={historicalLogsFetchingStatus}
+        isHistoryOn={isHistoryOn}
+        setIsHistoryOn={setIsHistoryOn}
       />
       <AnimationCombobox
-        logs={reversedLogs}
+        useSmallView={useSmallView}
+        toggleSmallViewDialog={toggleSmallViewDialog}
+        reversedLogs={reversedLogs}
         logDownloadStatus={logDownloadStatus}
         averageLogDownloadSpeed={averageLogDownloadSpeed}
         isAnimationOn={isAnimationOn}
         setIsAnimationOn={setIsAnimationOn}
-        selectedLogIndex={logs.length - 1 - selectedLogIndex}
+        selectedReversedLogIndex={logs.length - 1 - selectedLogIndex}
         onLogSelect={onLogSelect}
         animationRangeIndices={animationRangeIndices}
         setAnimationRangeIndices={setAnimationRangeIndices}
         selectedAnimationSpeed={selectedAnimationSpeed}
         setSelectedAnimationSpeed={setSelectedAnimationSpeed}
+        repeat={repeat}
+        setRepeat={setRepeat}
+        repeatRef={repeatRef}
+        startLongPress={startLongPress}
+        stopLongPress={stopLongPress}
+        isLongPressing={isLongPressing}
+        pause={pause}
+        play={play}
+        stop={stop}
       />
       <LegendsCombobox
+        useSmallView={useSmallView}
+        toggleSmallViewDialog={toggleSmallViewDialog}
         selectedMode={mode}
         onSelect={onModeSelect}
         modeFetchingStatus={modeFetchingStatus}
@@ -962,7 +220,10 @@ const SidePanel = ({
           onValueChange={value => setOpacity(value[0] / 100)}
         />
       </div>
-      <SettingsDialog />
+      <SettingsDialog
+        useSmallView={useSmallView}
+        toggleSmallViewDialog={toggleSmallViewDialog}
+      />
       <div
         className='flex items-center justify-center w-full h-8 p-2 text-xs text-muted-foreground bg-accent rounded-md overflow-hidden transition-all'
       >
@@ -970,7 +231,7 @@ const SidePanel = ({
       </div>
       <div className='relative flex items-center justify-center gap-1 w-full h-8 rounded-md overflow-hidden'>
         <div
-          className='group flex items-center justify-center w-1/2 h-full ml-0.5 bg-black rounded-md cursor-pointer transition-all hover:bg-blue-500'
+          className='group flex items-center justify-center w-1/2 h-full ml-0.5 bg-primary rounded-md cursor-pointer transition-all hover:bg-blue-500'
           onClick={() => {
             window.open('https://github.com/diragb', '_blank')
           }}
@@ -983,7 +244,7 @@ const SidePanel = ({
           />
         </div>
         <div
-          className='group flex items-center justify-center w-1/2 h-full mr-0.5 bg-black rounded-md cursor-pointer transition-all hover:bg-blue-500'
+          className='group flex items-center justify-center w-1/2 h-full mr-0.5 bg-primary rounded-md cursor-pointer transition-all hover:bg-blue-500'
           onClick={() => {
             window.open('https://x.com/intent/user?screen_name=diragb', '_blank')
           }}

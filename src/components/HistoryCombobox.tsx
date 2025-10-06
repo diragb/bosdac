@@ -30,18 +30,111 @@ import {
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from './ui/scroll-area'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 // Functions:
+const HistoryCommand = ({
+  scrollAreaRef,
+  logs,
+  selectedLog,
+  onSelect,
+  setIsHistoryOn,
+  historicalLogsFetchingStatus,
+  localTimezoneOffset,
+  formatGMTToLocal12Hours,
+}: {
+  scrollAreaRef: React.RefObject<HTMLDivElement | null>
+  logs: MOSDACLogData
+  selectedLog: MOSDACLog | null
+  onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
+  setIsHistoryOn: (value: boolean) => void
+  historicalLogsFetchingStatus: Map<string, number | boolean>
+  localTimezoneOffset: string
+  formatGMTToLocal12Hours: (time: string) => string
+}) => (
+  <Command>
+    <CommandList>
+      <CommandGroup>
+        <ScrollArea ref={scrollAreaRef} className='h-52'>
+          {logs.map((log, index) => (
+            <CommandItem
+              key={log.name}
+              value={log.name}
+              onSelect={logName => {
+                let _selectedLog: MOSDACLog | null = null
+                if (selectedLog?.name === logName) {
+                  _selectedLog = logs[0]
+                  setIsHistoryOn(false)
+                } else {
+                  _selectedLog = logs.find(log => log.name === logName) ?? null
+                  setIsHistoryOn(index !== 0)
+                }
+
+                onSelect(_selectedLog!, index)
+              }}
+              className='justify-between cursor-pointer'
+            >
+              <div className={cn('text-sm font-medium transition-all', log.name === selectedLog?.name && 'text-blue-500')}>
+                {log.when.date} {log.when.month} {log.when.year} <span className='font-bold'>{formatGMTToLocal12Hours(log.when.time)}</span> ({localTimezoneOffset}) {index === 0 ? ' [Latest]' : ''}
+              </div>
+              {
+                historicalLogsFetchingStatus.has(log.name) ? (
+                  <>
+                    {
+                      historicalLogsFetchingStatus.get(log.name) === false ? (
+                        <span title='Something went wrong..'>
+                          <FrownIcon className='size-3 text-rose-500' />
+                        </span>
+                      ) : (
+                        <div className='flex items-center justify-center gap-1'>
+                          <span className='text-xs font-medium'>{(((historicalLogsFetchingStatus.get(log.name) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
+                          <Loader2Icon className='size-3 animate-spin' />
+                        </div>
+                      )
+                    }
+                  </>
+                ) : (
+                  <CheckIcon
+                    className={cn(
+                      'size-4',
+                      log.name === selectedLog?.name ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                )
+              }
+            </CommandItem>
+          ))}
+        </ScrollArea>
+      </CommandGroup>
+    </CommandList>
+  </Command>
+)
+
 const HistoryCombobox = ({
+  useSmallView,
+  toggleSmallViewDialog,
   logs,
   selectedLog,
   onSelect,
   historicalLogsFetchingStatus,
+  isHistoryOn,
+  setIsHistoryOn,
 }: {
+  useSmallView: boolean
+  toggleSmallViewDialog: (state: boolean) => Promise<void>
   logs: MOSDACLogData
   selectedLog: MOSDACLog | null
   onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
   historicalLogsFetchingStatus: Map<string, number | boolean>
+  isHistoryOn: boolean
+  setIsHistoryOn: React.Dispatch<React.SetStateAction<boolean>>
 }) => {
   // Memo:
   const localTimezoneOffset = useMemo(() => {
@@ -54,7 +147,6 @@ const HistoryCombobox = ({
   }, [])
 
   // State:
-  const [isHistoryOn, setIsHistoryOn] = useState(false)
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   const [animateResetIcon, setAnimateResetIcon] = useState(false)
@@ -76,7 +168,6 @@ const HistoryCombobox = ({
 
     return () => cancelAnimationFrame(raf)
   }, [historyPopoverOpen, selectedLog?.name])
-  // }, [historyPopoverOpen])
 
   // Functions:
   const formatGMTToLocal12Hours = (time: string) => {
@@ -103,94 +194,112 @@ const HistoryCombobox = ({
 
   // Return:
   return (
-    <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
-      <div className='flex gap-2 w-full'>
-        <PopoverTrigger asChild>
-          <Button variant='outline' className='relative w-[calc(100%-44px)] cursor-pointer' disabled={logs.length === 0}>
-            <div
-              className={cn(
-                'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
-                historicalLogsFetchingStatus.size > 0 ? 'bg-blue-500 animate-pulse' : isHistoryOn ? 'bg-green-500' : 'bg-rose-400',
-              )}
-            />
-            History
-          </Button>
-        </PopoverTrigger>
-        <Button
-          size='icon'
-          variant='outline'
-          className='relative cursor-pointer'
-          disabled={logs.length === 0}
-          onClick={async () => {
-            setIsHistoryOn(false)
-            onSelect(logs[0], 0)
-            setAnimateResetIcon(true)
-            await sleep(1000)
-            setAnimateResetIcon(false)
-          }}
-        >
-          <RotateCcwIcon className={cn('size-4 text-black', animateResetIcon && 'rotate-counterclockwise')} />
-        </Button>
-      </div>
-      <PopoverContent className={cn('z-[1001] w-96 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={60}>
-        <Command>
-          <CommandList>
-            <CommandGroup>
-              <ScrollArea ref={scrollAreaRef} className='h-52'>
-                {logs.map((log, index) => (
-                  <CommandItem
-                    key={log.name}
-                    value={log.name}
-                    onSelect={logName => {
-                      let _selectedLog: MOSDACLog | null = null
-                      if (selectedLog?.name === logName) {
-                        _selectedLog = logs[0]
-                        setIsHistoryOn(false)
-                      } else {
-                        _selectedLog = logs.find(log => log.name === logName) ?? null
-                        setIsHistoryOn(index !== 0)
-                      }
-
-                      onSelect(_selectedLog!, index)
-                    }}
-                    className='justify-between cursor-pointer'
-                  >
-                    <div className={cn('text-sm font-medium transition-all', log.name === selectedLog?.name && 'text-blue-500')}>
-                      {log.when.date} {log.when.month} {log.when.year} <span className='font-bold'>{formatGMTToLocal12Hours(log.when.time)}</span> ({localTimezoneOffset}) {index === 0 ? ' [Latest]' : ''}
-                    </div>
-                    {
-                      historicalLogsFetchingStatus.has(log.name) ? (
-                        <>
-                          {
-                            historicalLogsFetchingStatus.get(log.name) === false ? (
-                              <span title='Something went wrong..'>
-                                <FrownIcon className='size-3 text-rose-500' />
-                              </span>
-                            ) : (
-                              <div className='flex items-center justify-center gap-1'>
-                                <span className='text-xs font-medium'>{(((historicalLogsFetchingStatus.get(log.name) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
-                                <Loader2Icon className='size-3 animate-spin' />
-                              </div>
-                            )
-                          }
-                        </>
-                      ) : (
-                        <CheckIcon
-                          className={cn(
-                            'size-4',
-                            log.name === selectedLog?.name ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                      )
-                    }
-                  </CommandItem>
-                ))}
-              </ScrollArea>
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <>
+      {
+        useSmallView ? (
+          <Dialog
+            open={historyPopoverOpen} 
+            onOpenChange={async _open => {
+              if (_open) {
+                await toggleSmallViewDialog(_open)
+                setHistoryPopoverOpen(_open)
+              } else {
+                setHistoryPopoverOpen(_open)
+                await toggleSmallViewDialog(_open)
+              }
+            }}
+          >
+            <div className='flex gap-2 w-full'>
+              <DialogTrigger asChild>
+                <Button variant='outline' className={cn('relative w-[calc(100%-44px)] cursor-pointer', historyPopoverOpen && '!bg-zinc-200')} disabled={logs.length === 0}>
+                  <div
+                    className={cn(
+                      'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
+                      historicalLogsFetchingStatus.size > 0 ? 'bg-blue-500 animate-pulse' : isHistoryOn ? 'bg-green-500' : 'bg-rose-400',
+                    )}
+                  />
+                  History
+                </Button>
+              </DialogTrigger>
+              <Button
+                size='icon'
+                variant='outline'
+                className='relative cursor-pointer'
+                disabled={logs.length === 0}
+                onClick={async () => {
+                  setIsHistoryOn(false)
+                  onSelect(logs[0], 0)
+                  setAnimateResetIcon(true)
+                  await sleep(1000)
+                  setAnimateResetIcon(false)
+                }}
+              >
+                <RotateCcwIcon className={cn('size-4 text-black', animateResetIcon && 'rotate-counterclockwise')} />
+              </Button>
+            </div>
+            <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] p-0', `${geistSans.className} font-sans`)}>
+              <VisuallyHidden>
+                <DialogTitle>Layers</DialogTitle>
+                <DialogDescription>Select a layer from the list below</DialogDescription>
+              </VisuallyHidden>
+              <HistoryCommand
+                scrollAreaRef={scrollAreaRef}
+                logs={logs}
+                selectedLog={selectedLog}
+                onSelect={onSelect}
+                setIsHistoryOn={setIsHistoryOn}
+                historicalLogsFetchingStatus={historicalLogsFetchingStatus}
+                localTimezoneOffset={localTimezoneOffset}
+                formatGMTToLocal12Hours={formatGMTToLocal12Hours}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
+            <div className='flex gap-2 w-full'>
+              <PopoverTrigger asChild>
+                <Button variant='outline' className='relative w-[calc(100%-44px)] cursor-pointer' disabled={logs.length === 0}>
+                  <div
+                    className={cn(
+                      'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
+                      historicalLogsFetchingStatus.size > 0 ? 'bg-blue-500 animate-pulse' : isHistoryOn ? 'bg-green-500' : 'bg-rose-400',
+                    )}
+                  />
+                  History
+                </Button>
+              </PopoverTrigger>
+              <Button
+                size='icon'
+                variant='outline'
+                className='relative cursor-pointer'
+                disabled={logs.length === 0}
+                onClick={async () => {
+                  setIsHistoryOn(false)
+                  onSelect(logs[0], 0)
+                  setAnimateResetIcon(true)
+                  await sleep(1000)
+                  setAnimateResetIcon(false)
+                }}
+              >
+                <RotateCcwIcon className={cn('size-4 text-black', animateResetIcon && 'rotate-counterclockwise')} />
+              </Button>
+            </div>
+            <PopoverContent className={cn('z-[1001] w-96 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={60}>
+              <HistoryCommand
+                scrollAreaRef={scrollAreaRef}
+                logs={logs}
+                selectedLog={selectedLog}
+                onSelect={onSelect}
+                setIsHistoryOn={setIsHistoryOn}
+                historicalLogsFetchingStatus={historicalLogsFetchingStatus}
+                localTimezoneOffset={localTimezoneOffset}
+                formatGMTToLocal12Hours={formatGMTToLocal12Hours}
+              />
+            </PopoverContent>
+          </Popover>
+        )
+      }
+    </>
   )
 }
 

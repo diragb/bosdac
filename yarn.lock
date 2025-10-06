@@ -1226,6 +1226,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@radix-ui/react-visually-hidden@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@radix-ui/react-visually-hidden@npm:1.2.3"
+  dependencies:
+    "@radix-ui/react-primitive": "npm:2.1.3"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10c0/cf86a37f1cbee50a964056f3dc4f6bb1ee79c76daa321f913aa20ff3e1ccdfafbf2b114d7bb616aeefc7c4b895e6ca898523fdb67710d89bd5d8edb739a0d9b6
+  languageName: node
+  linkType: hard
+
 "@radix-ui/rect@npm:1.1.1":
   version: 1.1.1
   resolution: "@radix-ui/rect@npm:1.1.1"
@@ -2099,6 +2118,7 @@ __metadata:
     "@radix-ui/react-scroll-area": "npm:^1.2.10"
     "@radix-ui/react-slider": "npm:^1.3.6"
     "@radix-ui/react-slot": "npm:^1.2.3"
+    "@radix-ui/react-visually-hidden": "npm:^1.2.3"
     "@react-google-maps/api": "npm:^2.20.7"
     "@tailwindcss/postcss": "npm:^4"
     "@types/leaflet": "npm:^1.9.20"

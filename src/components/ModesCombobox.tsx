@@ -28,13 +28,95 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 // Functions:
-const ModeCombobox = ({
+const ModeCommand = ({
+  MODES,
   selectedMode,
   onSelect,
   modeFetchingStatus,
 }: {
+  MODES: {
+    id: MOSDACImageMode
+    name: string
+    className: string
+  }[]
+  selectedMode: MOSDACImageMode
+  onSelect: (mode: MOSDACImageMode) => void
+  modeFetchingStatus: Map<string, number | boolean>
+}) => (
+  <Command>
+    <CommandList>
+      <CommandGroup>
+        {MODES.map(mode => (
+          <CommandItem
+            key={mode.id}
+            value={mode.id}
+            onSelect={currentValue => {
+              if (selectedMode !== currentValue) onSelect(currentValue as MOSDACImageMode)
+            }}
+            className='justify-between cursor-pointer'
+          >
+            <div className={cn('flex justify-center items-center gap-2 transition-all', selectedMode === mode.id && 'text-blue-500')}>
+              <div
+                className={cn(
+                  'h-3 w-8 rounded-full',
+                  mode.className,
+                )}
+              />
+              <span className='text-sm font-medium'>
+                {mode.name}
+              </span>
+            </div>
+            {
+                modeFetchingStatus.has(mode.id) ? (
+                  <>
+                    {
+                      modeFetchingStatus.get(mode.id) === false ? (
+                        <span title='Something went wrong..'>
+                          <FrownIcon className='size-3 text-rose-500' />
+                        </span>
+                      ) : (
+                        <div className='flex items-center justify-center gap-1'>
+                          <span className='text-xs font-medium'>{(((modeFetchingStatus.get(mode.id) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
+                          <Loader2Icon className='size-3 animate-spin' />
+                        </div>
+                      )
+                    }
+                  </>
+                ) : (
+                  <CheckIcon
+                    className={cn(
+                      'size-4',
+                      selectedMode === mode.id ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                )
+              }
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    </CommandList>
+  </Command>
+)
+
+const ModeCombobox = ({
+  useSmallView,
+  toggleSmallViewDialog,
+  selectedMode,
+  onSelect,
+  modeFetchingStatus,
+}: {
+  useSmallView: boolean
+  toggleSmallViewDialog: (state: boolean) => Promise<void>
   selectedMode: MOSDACImageMode
   onSelect: (mode: MOSDACImageMode) => void
   modeFetchingStatus: Map<string, number | boolean>
@@ -54,74 +136,70 @@ const ModeCombobox = ({
 
   // Return:
   return (
-    <Popover open={legendsPopoverOpen} onOpenChange={setLegendsPopoverOpen}>
-      <PopoverTrigger asChild>
-        <Button variant='outline' className='relative w-full cursor-pointer'>
-          <div 
-            className={cn(
-              'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
-              MODES.find(mode => mode.id === selectedMode)?.className,
-            )}
-          />
-          Mode
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className={cn('z-[1001] w-64 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
-        <Command>
-          <CommandList>
-            <CommandGroup>
-              {MODES.map(mode => (
-                <CommandItem
-                  key={mode.id}
-                  value={mode.id}
-                  onSelect={currentValue => {
-                    if (selectedMode !== currentValue) onSelect(currentValue as MOSDACImageMode)
-                  }}
-                  className='justify-between cursor-pointer'
-                >
-                  <div className={cn('flex justify-center items-center gap-2 transition-all', selectedMode === mode.id && 'text-blue-500')}>
-                    <div
-                      className={cn(
-                        'h-3 w-8 rounded-full',
-                        mode.className,
-                      )}
-                    />
-                    <span className='text-sm font-medium'>
-                      {mode.name}
-                    </span>
-                  </div>
-                  {
-                      modeFetchingStatus.has(mode.id) ? (
-                        <>
-                          {
-                            modeFetchingStatus.get(mode.id) === false ? (
-                              <span title='Something went wrong..'>
-                                <FrownIcon className='size-3 text-rose-500' />
-                              </span>
-                            ) : (
-                              <div className='flex items-center justify-center gap-1'>
-                                <span className='text-xs font-medium'>{(((modeFetchingStatus.get(mode.id) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
-                                <Loader2Icon className='size-3 animate-spin' />
-                              </div>
-                            )
-                          }
-                        </>
-                      ) : (
-                        <CheckIcon
-                          className={cn(
-                            'size-4',
-                            selectedMode === mode.id ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                      )
-                    }
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <>
+      {
+        useSmallView ? (
+          <Dialog
+            open={legendsPopoverOpen} 
+            onOpenChange={async _open => {
+              if (_open) {
+                await toggleSmallViewDialog(_open)
+                setLegendsPopoverOpen(_open)
+              } else {
+                setLegendsPopoverOpen(_open)
+                await toggleSmallViewDialog(_open)
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant='outline' className={cn('relative w-full cursor-pointer', legendsPopoverOpen && '!bg-zinc-200')}>
+                <div 
+                  className={cn(
+                    'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
+                    MODES.find(mode => mode.id === selectedMode)?.className,
+                  )}
+                />
+                Mode
+              </Button>
+            </DialogTrigger>
+            <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1003] p-0', `${geistSans.className} font-sans`)}>
+              <VisuallyHidden>
+                <DialogTitle>Layers</DialogTitle>
+                <DialogDescription>Select a layer from the list below</DialogDescription>
+              </VisuallyHidden>
+              <ModeCommand
+                MODES={MODES}
+                selectedMode={selectedMode}
+                onSelect={onSelect}
+                modeFetchingStatus={modeFetchingStatus}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Popover open={legendsPopoverOpen} onOpenChange={setLegendsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant='outline' className={cn('relative w-full cursor-pointer', legendsPopoverOpen && '!bg-zinc-200')}>
+                <div 
+                  className={cn(
+                    'absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all',
+                    MODES.find(mode => mode.id === selectedMode)?.className,
+                  )}
+                />
+                Mode
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className={cn('z-[1001] w-64 p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
+              <ModeCommand
+                MODES={MODES}
+                selectedMode={selectedMode}
+                onSelect={onSelect}
+                modeFetchingStatus={modeFetchingStatus}
+              />
+            </PopoverContent>
+          </Popover>
+        )
+      }
+    </>
   )
 }
 

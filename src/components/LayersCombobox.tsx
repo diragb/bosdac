@@ -40,6 +40,14 @@ const geistSans = Geist({
 })
 
 // Components:
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   Command,
   CommandGroup,
@@ -55,7 +63,75 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from './ui/scroll-area'
 
 // Functions:
+const LayersCommand = ({
+  LAYERS,
+  onLayerSelect,
+  layers,
+  layerFetchingStatus,
+}: {
+  LAYERS: {
+    id: Layer
+    icon: React.JSX.Element
+    name: string
+  }[]
+  onLayerSelect: (currentValue: string, layer: {
+    id: Layer
+    icon: React.JSX.Element
+    name: string
+  }) => void
+  layers: Layer[]
+  layerFetchingStatus: Map<Layer, boolean>
+}) => (
+  <Command>
+    <CommandList>
+      <CommandGroup>
+        <ScrollArea className='h-52'>
+          {LAYERS.map(layer => (
+            <CommandItem
+              key={layer.id}
+              value={layer.id}
+              onSelect={value => onLayerSelect(value, layer)}
+              className='justify-between cursor-pointer'
+            >
+              <div className={cn('flex justify-center items-center gap-2 transition-all', layers.includes(layer.id) && 'text-blue-500')}>
+                {layer.icon}
+                <span className='text-sm font-medium'>
+                  {layer.name}
+                </span>
+              </div>
+              {
+                layerFetchingStatus.has(layer.id) ? (
+                  <>
+                    {
+                      layerFetchingStatus.get(layer.id) ? (
+                        <Loader2Icon className='size-3 animate-spin' />
+                      ) : (
+                        <span title='Something went wrong..'>
+                          <FrownIcon className='size-3 text-rose-500' />
+                        </span>
+                      )
+                    }
+                  </>
+                ) : (
+                  <CheckIcon
+                    className={cn(
+                      'size-4',
+                      layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                )
+              }
+            </CommandItem>
+          ))}
+        </ScrollArea>
+      </CommandGroup>
+    </CommandList>
+  </Command>
+)
+
 const LayersCombobox = ({
+  useSmallView,
+  toggleSmallViewDialog,
   layers,
   setLayers,
   layerFetchingStatus,
@@ -69,6 +145,8 @@ const LayersCombobox = ({
   onRipCurrentForecastLayerSelect,
   onSnowLayerSelect,
 }: {
+  useSmallView: boolean
+  toggleSmallViewDialog: (state: boolean) => Promise<void>
   layers: Layer[]
   setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
   layerFetchingStatus: Map<Layer, boolean>
@@ -141,65 +219,68 @@ const LayersCombobox = ({
 
   // Return:
   return (
-    <Popover open={layersPopoverOpen} onOpenChange={setLayersPopoverOpen}>
-      <PopoverTrigger asChild>
-        <Button variant='outline' className={cn('relative w-full cursor-pointer', layersPopoverOpen && '!bg-zinc-200')}>
-          {
-            layers.length > 0 && (
-              <div className='absolute -top-2 -right-2 z-10 flex justify-center items-center w-4 h-4 text-xs text-[10px] text-white bg-blue-500 rounded-full'>{layers.length}</div>
-            )
-          }
-          Layers
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className={cn('z-[1001] w-2xs p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
-        <Command>
-          <CommandList>
-            <CommandGroup>
-              <ScrollArea className='h-52'>
-                {LAYERS.map(layer => (
-                  <CommandItem
-                    key={layer.id}
-                    value={layer.id}
-                    onSelect={value => onLayerSelect(value, layer)}
-                    className='justify-between cursor-pointer'
-                  >
-                    <div className={cn('flex justify-center items-center gap-2 transition-all', layers.includes(layer.id) && 'text-blue-500')}>
-                      {layer.icon}
-                      <span className='text-sm font-medium'>
-                        {layer.name}
-                      </span>
-                    </div>
-                    {
-                      layerFetchingStatus.has(layer.id) ? (
-                        <>
-                          {
-                            layerFetchingStatus.get(layer.id) ? (
-                              <Loader2Icon className='size-3 animate-spin' />
-                            ) : (
-                              <span title='Something went wrong..'>
-                                <FrownIcon className='size-3 text-rose-500' />
-                              </span>
-                            )
-                          }
-                        </>
-                      ) : (
-                        <CheckIcon
-                          className={cn(
-                            'size-4',
-                            layers.includes(layer.id) ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                      )
-                    }
-                  </CommandItem>
-                ))}
-              </ScrollArea>
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <>
+      {
+        useSmallView ? (
+          <Dialog
+            open={layersPopoverOpen}
+            onOpenChange={async _open => {
+              if (_open) {
+                await toggleSmallViewDialog(_open)
+                setLayersPopoverOpen(_open)
+              } else {
+                setLayersPopoverOpen(_open)
+                await toggleSmallViewDialog(_open)
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant='outline' className={cn('relative w-full cursor-pointer', layersPopoverOpen && '!bg-zinc-200')}>
+                {
+                  layers.length > 0 && (
+                    <div className='absolute -top-2 -right-2 z-10 flex justify-center items-center w-4 h-4 text-xs text-[10px] text-white bg-blue-500 rounded-full'>{layers.length}</div>
+                  )
+                }
+                Layers
+              </Button>
+            </DialogTrigger>
+            <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] p-0', `${geistSans.className} font-sans`)}>
+              <VisuallyHidden>
+                <DialogTitle>Layers</DialogTitle>
+                <DialogDescription>Select a layer from the list below</DialogDescription>
+              </VisuallyHidden>
+              <LayersCommand
+                LAYERS={LAYERS}
+                onLayerSelect={onLayerSelect}
+                layers={layers}
+                layerFetchingStatus={layerFetchingStatus}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Popover open={layersPopoverOpen} onOpenChange={setLayersPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant='outline' className={cn('relative w-full cursor-pointer', layersPopoverOpen && '!bg-zinc-200')}>
+                {
+                  layers.length > 0 && (
+                    <div className='absolute -top-2 -right-2 z-10 flex justify-center items-center w-4 h-4 text-xs text-[10px] text-white bg-blue-500 rounded-full'>{layers.length}</div>
+                  )
+                }
+                Layers
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className={cn('z-[1001] w-2xs p-0', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
+              <LayersCommand
+                LAYERS={LAYERS}
+                onLayerSelect={onLayerSelect}
+                layers={layers}
+                layerFetchingStatus={layerFetchingStatus}
+              />
+            </PopoverContent>
+          </Popover>
+        )
+      }
+    </>
   )
 }
 

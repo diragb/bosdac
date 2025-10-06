@@ -18,6 +18,7 @@ const geistSans = Geist({
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogOverlay,
   DialogTitle,
@@ -37,9 +38,16 @@ import {
   AlertDialogTrigger,
   AlertDialogOverlay,
 } from '@/components/ui/alert-dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 // Functions:
-const SettingsDialog = () => {
+const SettingsDialog = ({
+  useSmallView,
+  toggleSmallViewDialog,
+}: {
+  useSmallView: boolean
+  toggleSmallViewDialog: (state: boolean) => Promise<void>
+}) => {
   // State:
   const [isOpen, setIsOpen] = useState(false)
   const [localQuota, setLocalQuota] = useState({
@@ -81,14 +89,35 @@ const SettingsDialog = () => {
 
   // Return:
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={async _open => {
+        if (useSmallView) {
+          if (_open) {
+            await toggleSmallViewDialog(_open)
+            setIsOpen(_open)
+          } else {
+            setIsOpen(_open)
+            await toggleSmallViewDialog(_open)
+          }
+        } else setIsOpen(_open)
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant='outline' className={cn('relative w-full cursor-pointer', isOpen && '!bg-zinc-200')}>
           Settings
         </Button>
       </DialogTrigger>
-      <DialogOverlay className='z-[1001]' />
-      <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] !max-w-screen !w-[600px] p-4', `${geistSans.className} font-sans`)}>
+      {!useSmallView && <DialogOverlay className='z-[1001]' />}
+      <DialogContent
+        hideOverlay
+        showCloseButton={false}
+        className={cn(
+          'z-[1001]',
+          useSmallView ? '!w-80 p-4' : '!max-w-screen !w-[600px] p-4',
+          `${geistSans.className} font-sans`,
+        )}
+      >
         <DialogPrimitive.Close
           data-slot='dialog-close'
           className='ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-6 cursor-pointer'
@@ -97,13 +126,16 @@ const SettingsDialog = () => {
           <span className='sr-only'>Close</span>
         </DialogPrimitive.Close>
         <DialogHeader>
-          <DialogTitle className='text-2xl'>Settings</DialogTitle>
+          <DialogTitle className={cn(useSmallView ? 'text-lg' : 'text-2xl')}>Settings</DialogTitle>
+          <VisuallyHidden>
+            <DialogDescription>Feel free to modify any of the settings below</DialogDescription>
+          </VisuallyHidden>
         </DialogHeader>
         <div className='flex flex-col'>
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between w-full'>
-              <span className='text-lg font-semibold'>Storage</span>
-              <span className='text-lg font-medium text-zinc-500'>{formatBytes(localQuota.usage)} of {formatBytes(localQuota.available)} used</span>
+              <span className={cn(useSmallView ? 'text-sm' : 'text-lg', 'font-semibold')}>Storage</span>
+              <span className={cn(useSmallView ? 'text-sm' : 'text-lg', 'font-medium text-zinc-500')}>{formatBytes(localQuota.usage)} of {formatBytes(localQuota.available)} used</span>
             </div>
             <div className='flex gap-1 w-full h-10 bg-secondary border-2 border-border rounded-md overflow-hidden'>
               <div
