@@ -7,13 +7,13 @@ import sleep from 'sleep-promise'
 
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
-import { LogDownloadStatus } from '@/pages'
+import { LogDownloadStatus } from '@/components/SidePanel'
 
 // Assets:
 import { CheckIcon, ChevronDownIcon, ChevronsLeftIcon, ChevronsRightIcon, PauseIcon, PlayIcon, RepeatIcon, SquareIcon, TimerIcon, TriangleAlertIcon, TriangleIcon } from 'lucide-react'
 
 // Constants:
-import { ANIMATION_SPEEDS } from '@/pages'
+import { ANIMATION_SPEEDS } from '@/components/SidePanel'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

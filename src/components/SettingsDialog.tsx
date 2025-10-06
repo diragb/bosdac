@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { formatBytes, getIndexedDBQuota, getIndexedDBSize } from '@/lib/indexeddb'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import localforage from 'localforage'
 
 // Assets:
 import { XIcon } from 'lucide-react'
@@ -34,8 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AlertDialogOverlay,
 } from '@/components/ui/alert-dialog'
-import localforage from 'localforage'
 
 // Functions:
 const SettingsDialog = () => {
@@ -75,10 +76,8 @@ const SettingsDialog = () => {
 
   // Effects:
   useEffect(() => {
-    loadLocalQuotaInfo()
-  }, [loadLocalQuotaInfo])
-  // }, [])
-
+    if (isOpen) loadLocalQuotaInfo()
+  }, [isOpen, loadLocalQuotaInfo])
 
   // Return:
   return (
@@ -89,7 +88,7 @@ const SettingsDialog = () => {
         </Button>
       </DialogTrigger>
       <DialogOverlay className='z-[1001]' />
-      <DialogContent showCloseButton={false} className={cn('z-[1001] !max-w-screen !w-[600px] p-4', `${geistSans.className} font-sans`)}>
+      <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] !max-w-screen !w-[600px] p-4', `${geistSans.className} font-sans`)}>
         <DialogPrimitive.Close
           data-slot='dialog-close'
           className='ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-6 cursor-pointer'
@@ -130,7 +129,8 @@ const SettingsDialog = () => {
                   Clear Cache
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className={cn(`${geistSans.className} font-sans`)}>
+              <AlertDialogOverlay className='z-[1002]' />
+              <AlertDialogContent className={cn('z-[1002]', `${geistSans.className} font-sans`)} hideOverlay>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -141,8 +141,8 @@ const SettingsDialog = () => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={clearLocallyCachedImages}>Continue</AlertDialogAction>
+                  <AlertDialogCancel className='cursor-pointer'>Cancel</AlertDialogCancel>
+                  <AlertDialogAction className='cursor-pointer' onClick={clearLocallyCachedImages}>Continue</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

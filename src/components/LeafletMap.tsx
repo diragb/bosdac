@@ -19,7 +19,7 @@ import 'leaflet-velocity/dist/leaflet-velocity.css'
 import 'leaflet-velocity'
 
 // Constants:
-import { BOXES } from '@/pages/index'
+import { BOXES } from '@/lib/box'
 import { CRS, HeatLatLngTuple, LatLngBoundsExpression } from 'leaflet'
 const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
 const ZOOM = 5
