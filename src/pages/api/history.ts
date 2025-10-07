@@ -12,6 +12,7 @@ export enum MOSDACImageMode {
 
 // Exports:
 export const getMOSDACURL = (bbox: string, date: string, month: string, year: string, formattedTimestamp: string, mode?: MOSDACImageMode) => {
+  const dimension = '512'
   let selectedMode: string | null = null
   switch (mode) {
     case MOSDACImageMode.REDBLUE:
@@ -40,7 +41,7 @@ export const getMOSDACURL = (bbox: string, date: string, month: string, year: st
                   `?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png`+
                   `&TRANSPARENT=true&LAYERS=IMG_TIR1&COLORSCALERANGE=267,1023`+
                   `&BELOWMINCOLOR=extend&ABOVEMAXCOLOR=extend&STYLES=boxfill/greyscale`+
-                  `&CRS=EPSG:3857&WIDTH=1024&HEIGHT=1024`+
+                  `&CRS=EPSG:3857&WIDTH=${dimension}&HEIGHT=${dimension}`+
                   `&BBOX=${bbox}${selectedMode !== null ? `&styles=${selectedMode}` : ''}`
 
   return URL

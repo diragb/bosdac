@@ -2,14 +2,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 // Exports:
-export const getMOSDACSnowURL = (bbox: string, time: string, date: string, month: string, year: string) => {  
+export const getMOSDACSnowURL = (bbox: string, time: string, date: string, month: string, year: string) => {
+  const dimension = '512'
   const URL = `https://mosdac.gov.in/live_data/wms/liveNew/products/Insat3s/3S_IMG`+
               `/${year}/${date}${month}/`+
               `3SIMG_${date}${month}${year}_${time}_L2C_SNW_V01R00.h5`+
               `?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng`+
               `&TRANSPARENT=true&LAYERS=SNW&CoLORSCALERANGE=1%2C1`+
               `&BELOWMINCOLOR=transparent&ABOVEMAXCOLOR=transparent&transparent=true&format=image%2Fpng&STYLES=boxfill%2Finsat_snw`+
-              `&WIDTH=1024&HEIGHT=1024&CRS=EPSG%3A3857`+
+              `&WIDTH=${dimension}&HEIGHT=${dimension}&CRS=EPSG%3A3857`+
               `&BBOX=${bbox}`
 
   return URL
