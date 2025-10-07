@@ -72,6 +72,7 @@ const Leaflet = () => {
   const activeNetworkRequestsRef = useRef(0)
   const isLongPressingRef = useRef<'forward' | 'backward' | null>(null)
   const repeatRef = useRef(false)
+  const logDownloadStatusRef = useRef<Map<string, LogDownloadStatus>>(new Map())
   
   // State:
   const [useSmallView, setUseSmallView] = useState(false)
@@ -272,11 +273,6 @@ const Leaflet = () => {
   const onLogSelect = async (log: MOSDACLog, logIndex: number) => {
     const previousLog = selectedLog
     try {
-      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
-        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.set(log.name, 0)
-        return newHistoricalLogsFetchingStatus
-      })
       setSelectedLog(log)
       setSelectedLogIndex(logIndex)
 
@@ -288,6 +284,20 @@ const Leaflet = () => {
         }
       }
 
+      const status = logDownloadStatusRef.current.get(log.name)
+      if (
+        status !== undefined &&
+        [
+          LogDownloadStatus.DOWNLOADING,
+          LogDownloadStatus.DOWNLOADED
+        ].includes(status)
+      ) return
+      setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
+        const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
+        newHistoricalLogsFetchingStatus.set(log.name, 0)
+        return newHistoricalLogsFetchingStatus
+      })
+      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.DOWNLOADING)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
         newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADING)
@@ -305,6 +315,7 @@ const Leaflet = () => {
         newHistoricalLogsFetchingStatus.delete(log.name)
         return newHistoricalLogsFetchingStatus
       })
+      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.DOWNLOADED)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
         newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADED)
@@ -328,6 +339,7 @@ const Leaflet = () => {
         newHistoricalLogsFetchingStatus.set(log.name, false)
         return newHistoricalLogsFetchingStatus
       })
+      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
         newLogDownloadStatus.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
