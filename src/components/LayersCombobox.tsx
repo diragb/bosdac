@@ -205,6 +205,7 @@ const LayersCombobox = ({
           break
         case Layer.CLOUDBURST_FORECAST:
           onCloudburstForecastLayerSelect()
+          break
         case Layer.RIP_CURRENT_FORECAST:
           onRipCurrentForecastLayerSelect()
           break
