@@ -19,6 +19,11 @@ const geistSans = Geist({
 import { Toaster } from '@/components/ui/sonner'
 import { Analytics } from '@vercel/analytics/next'
 
+// Context:
+import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
+import { AnimationContextProvider } from '@/context/AnimationContext'
+import { MapContextProvider } from '@/context/MapContext'
+
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
   <>
@@ -29,7 +34,13 @@ const App = ({ Component, pageProps }: AppProps) => (
       <meta name='mobile-web-app-capable' content='yes' />
     </Head>
     <main className={`${geistSans.className} font-sans`}>
-      <Component {...pageProps} />
+      <UtilitiesContextProvider>
+        <AnimationContextProvider>
+          <MapContextProvider>
+            <Component {...pageProps} />
+          </MapContextProvider>
+        </AnimationContextProvider>
+      </UtilitiesContextProvider>
       <Toaster />
       <Analytics />
     </main>

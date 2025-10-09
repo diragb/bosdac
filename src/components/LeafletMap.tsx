@@ -1,18 +1,26 @@
 'use client'
 
 // Packages:
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { Suspense, useContext, useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, ImageOverlay, useMapEvents } from 'react-leaflet'
 import dynamic from 'next/dynamic'
 
 // Typescript:
-import type { MOSDACLog } from '../pages/api/log'
-import { MOSDACImageMode } from '../pages/api/history'
 import { Layer } from './LayersCombobox'
 import type { FirePoint } from '@/lib/toFirePoint'
 import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
 import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
 import type { MOSDACSnowInfo } from '@/pages/api/snow-info'
+
+interface LeafletMapProps {
+  windDirectionData: MOSDACWindVelocity | null
+  fireSmokeData: FirePoint[] | null
+  fireSmokeHeatmapData: HeatLatLngTuple[] | null
+  cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
+  ripCurrentForecastData: string | null
+  snowInfo: MOSDACSnowInfo | null
+  snowImages: Map<string, string>
+}
 
 // Assets:
 import 'leaflet-velocity/dist/leaflet-velocity.css'
@@ -25,6 +33,7 @@ const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
 const ZOOM = 5
 
 // Components:
+import { ErrorBoundary } from 'react-error-boundary'
 const WindLayer = dynamic(() => import('../components/WindLayer'), { ssr: false })
 const WindHeatmapLayer = dynamic(() => import('../components/WindHeatmapLayer'), { ssr: false })
 const FireSmokeLayer = dynamic(() => import('../components/FireSmokeLayer'), { ssr: false })
@@ -32,6 +41,9 @@ const FireSmokeHeatmapLayer = dynamic(() => import('../components/FireSmokeHeatm
 const HeavyRainLayer = dynamic(() => import('../components/HeavyRainLayer'), { ssr: false })
 const HeavyRainForecastLayer = dynamic(() => import('../components/HeavyRainForecastLayer'), { ssr: false })
 const CloudburstForecastLayer = dynamic(() => import('../components/CloudburstForecastLayer'), { ssr: false })
+
+// Context:
+import MapContext from '@/context/MapContext'
 
 // Functions:
 const DragWatcher = ({
@@ -46,12 +58,27 @@ const DragWatcher = ({
   return null
 }
 
-const LeafletMap = ({
-  images,
-  selectedLog,
-  mode,
-  opacity,
-  layers,
+const LeafletMapErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <ErrorBoundary
+      fallbackRender={() => <div>Something went wrong loading the map data</div>}
+    >
+      {children}
+    </ErrorBoundary>
+  )
+}
+
+const LeafletMapWithSuspense = (leafletMapProps: LeafletMapProps) => {
+  return (
+    <Suspense fallback={<div>Loading map...</div>}>
+      <LeafletMapErrorBoundary>
+        <LeafletMap {...leafletMapProps} />
+      </LeafletMapErrorBoundary>
+    </Suspense>
+  )
+}
+
+export const LeafletMap = ({
   windDirectionData,
   fireSmokeData,
   fireSmokeHeatmapData,
@@ -59,20 +86,16 @@ const LeafletMap = ({
   ripCurrentForecastData,
   snowInfo,
   snowImages,
-}: {
-  images: Map<string, string>
-  selectedLog: MOSDACLog | null
-  mode: MOSDACImageMode
-  opacity: number
-  layers: Layer[]
-  windDirectionData: MOSDACWindVelocity | null
-  fireSmokeData: FirePoint[] | null
-  fireSmokeHeatmapData: HeatLatLngTuple[] | null
-  cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
-  ripCurrentForecastData: string | null
-  snowInfo: MOSDACSnowInfo | null
-  snowImages: Map<string, string>
-}) => {
+}: LeafletMapProps) => {
+  // Constants:
+  const {
+    layers,
+    selectedLog,
+    mode,
+    opacity,
+    images,
+  } = useContext(MapContext)
+
   // State:
   const [isDragging, setIsDragging] = useState(false)
   
@@ -220,4 +243,4 @@ const LeafletMap = ({
 }
 
 // Exports:
-export default LeafletMap
+export default LeafletMapWithSuspense

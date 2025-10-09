@@ -1,5 +1,5 @@
 // Packages:
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useContext } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import prettyMilliseconds from 'pretty-ms'
@@ -56,6 +56,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+import useAnimation from '@/hooks/useAnimation'
+import MapContext from '@/context/MapContext'
+import AnimationContext from '@/context/AnimationContext'
 
 // Functions:
 const AnimationContent = ({
@@ -302,68 +308,44 @@ const AnimationContent = ({
 )
 
 const AnimationCombobox = ({
-  useSmallView,
-  toggleSmallViewDialog,
-  reversedLogs,
-  logDownloadStatus,
-  averageLogDownloadSpeed,
-  isAnimationOn,
-  setIsAnimationOn,
   selectedReversedLogIndex,
-  onLogSelect,
-  animationRangeIndices,
-  setAnimationRangeIndices,
-  selectedAnimationSpeed,
-  setSelectedAnimationSpeed,
-  repeat,
-  setRepeat,
-  repeatRef,
-  startLongPress,
-  stopLongPress,
-  isLongPressing,
-  pause,
-  play,
-  stop,
 }: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
-  reversedLogs: MOSDACLogData
-  logDownloadStatus: Map<string, LogDownloadStatus>
-  averageLogDownloadSpeed: number
-  isAnimationOn: boolean
-  setIsAnimationOn: React.Dispatch<React.SetStateAction<boolean>>
   selectedReversedLogIndex: number
-  onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
-  animationRangeIndices: [number, number]
-  setAnimationRangeIndices: React.Dispatch<React.SetStateAction<[number, number]>>
-  selectedAnimationSpeed: typeof ANIMATION_SPEEDS[number]
-  setSelectedAnimationSpeed: React.Dispatch<React.SetStateAction<typeof ANIMATION_SPEEDS[number]>>
-  repeat: boolean
-  setRepeat: React.Dispatch<React.SetStateAction<boolean>>
-  repeatRef: React.MutableRefObject<boolean>
-  startLongPress: (direction: 'forward' | 'backward', _selectedLogIndex: number) => Promise<void>
-  stopLongPress: () => void
-  isLongPressing: 'forward' | 'backward' | null
-  pause: () => void
-  play: () => Promise<void>
-  stop: () => void
 }) => {
+  // Constants:
+  const {
+    useSmallView,
+    toggleSmallViewDialog,
+  } = useContext(UtilitiesContext)
+  const {
+    animationRangeIndices,
+    setAnimationRangeIndices,
+  } = useContext(AnimationContext)
+  const {
+    reversedLogs,
+    onLogSelect,
+    logDownloadStatus,
+    averageLogDownloadSpeed,
+  } = useContext(MapContext)
+  const {
+    isAnimationOn,
+    isLongPressing,
+    setIsAnimationOn,
+    repeat,
+    setRepeat,
+    repeatRef,
+    startLongPress,
+    stopLongPress,
+    pause,
+    play,
+    stop,
+    selectedAnimationSpeed,
+    setSelectedAnimationSpeed,
+    numberOfFrames,
+  } = useAnimation()
+
   // State:
   const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
-
-  // Memo:
-  const numberOfFrames = useMemo(() => {
-    let totalUnloadedFrames = (animationRangeIndices[1] - animationRangeIndices[0]) + 1
-
-    for (let i = animationRangeIndices[0]; i <= animationRangeIndices[1]; i++) {
-      const relevantLog = reversedLogs[i]
-      if (relevantLog && logDownloadStatus.get(relevantLog.name) === LogDownloadStatus.DOWNLOADED) {
-        if (totalUnloadedFrames > 0) totalUnloadedFrames--
-      }
-    }
-
-    return totalUnloadedFrames
-  }, [reversedLogs, animationRangeIndices, logDownloadStatus])
 
   // Functions:
   const formatGMTToLocal12Hours = useCallback((time: string) => {

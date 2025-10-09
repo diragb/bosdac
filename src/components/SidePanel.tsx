@@ -1,7 +1,7 @@
 'use client'
 
 // Packages:
-import React from 'react'
+import React, { useContext } from 'react'
 import { cn } from '@/lib/utils'
 
 // Typescript:
@@ -13,6 +13,19 @@ export enum LogDownloadStatus {
 
 import type { MOSDACLogData, MOSDACLog } from '../pages/api/log'
 import { MOSDACImageMode } from '../pages/api/history'
+
+export interface SidePanelProps {
+  layerFetchingStatus: Map<Layer, boolean>
+  onWindDirectionLayerSelect: () => Promise<void>
+  onWindHeatmapLayerSelect: () => Promise<void>
+  onFireSmokeLayerSelect: () => Promise<void>
+  onFireSmokeHeatmapLayerSelect: () => Promise<void>
+  onHeavyRainLayerSelect: () => Promise<void>
+  onHeavyRainForecastLayerSelect: () => Promise<void>
+  onCloudburstForecastLayerSelect: () => Promise<void>
+  onRipCurrentForecastLayerSelect: () => Promise<void>
+  onSnowLayerSelect: () => Promise<void>
+}
 
 // Constants:
 export const ANIMATION_SPEEDS = [
@@ -51,28 +64,12 @@ import { Slider } from '@/components/ui/slider'
 import AnimationCombobox from '@/components/AnimationCombobox'
 import SettingsDialog from '@/components/SettingsDialog'
 
+// Context:
+import MapContext from '@/context/MapContext'
+import UtilitiesContext from '@/context/UtilitiesContext'
+
 // Functions:
 const SidePanel = ({
-  useSmallView,
-  toggleSmallViewDialog,
-  layers,
-  setLayers,
-  selectedLog,
-  mode,
-  opacity,
-  setOpacity,
-  modeFetchingStatus,
-  logs,
-  reversedLogs,
-  onLogSelect,
-  historicalLogsFetchingStatus,
-  isHistoryOn,
-  setIsHistoryOn,
-  logDownloadStatus,
-  averageLogDownloadSpeed,
-  selectedLogIndex,
-  animationRangeIndices,
-  setAnimationRangeIndices,
   layerFetchingStatus,
   onWindDirectionLayerSelect,
   onWindHeatmapLayerSelect,
@@ -83,66 +80,22 @@ const SidePanel = ({
   onCloudburstForecastLayerSelect,
   onRipCurrentForecastLayerSelect,
   onSnowLayerSelect,
-  isAnimationOn,
-  setIsAnimationOn,
-  selectedAnimationSpeed,
-  setSelectedAnimationSpeed,
-  onModeSelect,
-  repeat,
-  setRepeat,
-  repeatRef,
-  startLongPress,
-  stopLongPress,
-  isLongPressing,
-  pause,
-  play,
-  stop,
-}: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
-  layers: Layer[]
-  setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
-  selectedLog: MOSDACLog | null
-  mode: MOSDACImageMode
-  opacity: number
-  setOpacity: React.Dispatch<React.SetStateAction<number>>
-  modeFetchingStatus: Map<MOSDACImageMode, number | boolean>
-  logs: MOSDACLogData
-  reversedLogs: MOSDACLogData
-  onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
-  historicalLogsFetchingStatus: Map<string, number | boolean>
-  isHistoryOn: boolean
-  setIsHistoryOn: React.Dispatch<React.SetStateAction<boolean>>
-  logDownloadStatus: Map<string, LogDownloadStatus>
-  averageLogDownloadSpeed: number
-  selectedLogIndex: number
-  animationRangeIndices: [number, number]
-  setAnimationRangeIndices: React.Dispatch<React.SetStateAction<[number, number]>>
-  layerFetchingStatus: Map<Layer, boolean>
-  onWindDirectionLayerSelect: () => Promise<void>
-  onWindHeatmapLayerSelect: () => Promise<void>
-  onFireSmokeLayerSelect: () => Promise<void>
-  onFireSmokeHeatmapLayerSelect: () => Promise<void>
-  onHeavyRainLayerSelect: () => Promise<void>
-  onHeavyRainForecastLayerSelect: () => Promise<void>
-  onCloudburstForecastLayerSelect: () => Promise<void>
-  onRipCurrentForecastLayerSelect: () => Promise<void>
-  onSnowLayerSelect: () => Promise<void>
-  isAnimationOn: boolean
-  setIsAnimationOn: React.Dispatch<React.SetStateAction<boolean>>
-  selectedAnimationSpeed: typeof ANIMATION_SPEEDS[number]
-  setSelectedAnimationSpeed: React.Dispatch<React.SetStateAction<typeof ANIMATION_SPEEDS[number]>>
-  onModeSelect: (newMode: MOSDACImageMode) => Promise<void>
-  repeat: boolean
-  setRepeat: React.Dispatch<React.SetStateAction<boolean>>
-  repeatRef: React.MutableRefObject<boolean>
-  startLongPress: (direction: 'forward' | 'backward', _selectedLogIndex: number) => Promise<void>
-  stopLongPress: () => void
-  isLongPressing: 'forward' | 'backward' | null
-  pause: () => void
-  play: () => Promise<void>
-  stop: () => void
-}) => {
+}: SidePanelProps) => {
+  // Constants:
+  const { useSmallView } = useContext(UtilitiesContext)
+  const {
+    logs,
+    onLogSelect,
+    historicalLogsFetchingStatus,
+    selectedLogIndex,
+    isHistoryOn,
+    setIsHistoryOn,
+    opacity,
+    setOpacity,
+    onModeSelect,
+    modeFetchingStatus,
+  } = useContext(MapContext)
+
   // Return:
   return (
     <div
@@ -152,10 +105,6 @@ const SidePanel = ({
       )}
     >
       <LayersCombobox
-        useSmallView={useSmallView}
-        toggleSmallViewDialog={toggleSmallViewDialog}
-        layers={layers}
-        setLayers={setLayers}
         layerFetchingStatus={layerFetchingStatus}
         onWindDirectionLayerSelect={onWindDirectionLayerSelect}
         onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
@@ -168,43 +117,14 @@ const SidePanel = ({
         onSnowLayerSelect={onSnowLayerSelect}
       />
       <HistoryCombobox
-        useSmallView={useSmallView}
-        toggleSmallViewDialog={toggleSmallViewDialog}
         logs={logs}
-        selectedLog={selectedLog}
         onSelect={onLogSelect}
         historicalLogsFetchingStatus={historicalLogsFetchingStatus}
         isHistoryOn={isHistoryOn}
         setIsHistoryOn={setIsHistoryOn}
       />
-      <AnimationCombobox
-        useSmallView={useSmallView}
-        toggleSmallViewDialog={toggleSmallViewDialog}
-        reversedLogs={reversedLogs}
-        logDownloadStatus={logDownloadStatus}
-        averageLogDownloadSpeed={averageLogDownloadSpeed}
-        isAnimationOn={isAnimationOn}
-        setIsAnimationOn={setIsAnimationOn}
-        selectedReversedLogIndex={logs.length - 1 - selectedLogIndex}
-        onLogSelect={onLogSelect}
-        animationRangeIndices={animationRangeIndices}
-        setAnimationRangeIndices={setAnimationRangeIndices}
-        selectedAnimationSpeed={selectedAnimationSpeed}
-        setSelectedAnimationSpeed={setSelectedAnimationSpeed}
-        repeat={repeat}
-        setRepeat={setRepeat}
-        repeatRef={repeatRef}
-        startLongPress={startLongPress}
-        stopLongPress={stopLongPress}
-        isLongPressing={isLongPressing}
-        pause={pause}
-        play={play}
-        stop={stop}
-      />
+      <AnimationCombobox selectedReversedLogIndex={logs.length - 1 - selectedLogIndex} />
       <LegendsCombobox
-        useSmallView={useSmallView}
-        toggleSmallViewDialog={toggleSmallViewDialog}
-        selectedMode={mode}
         onSelect={onModeSelect}
         modeFetchingStatus={modeFetchingStatus}
       />
@@ -220,10 +140,7 @@ const SidePanel = ({
           onValueChange={value => setOpacity(value[0] / 100)}
         />
       </div>
-      <SettingsDialog
-        useSmallView={useSmallView}
-        toggleSmallViewDialog={toggleSmallViewDialog}
-      />
+      <SettingsDialog />
       <div
         className='flex items-center justify-center w-full h-8 p-2 text-xs text-muted-foreground bg-accent rounded-md overflow-hidden transition-all'
       >

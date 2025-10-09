@@ -1,5 +1,5 @@
 // Packages:
-import React, { useMemo, useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 
@@ -61,6 +61,10 @@ import {
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from './ui/scroll-area'
+
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+import MapContext from '@/context/MapContext'
 
 // Functions:
 const LayersCommand = ({
@@ -130,10 +134,6 @@ const LayersCommand = ({
 )
 
 const LayersCombobox = ({
-  useSmallView,
-  toggleSmallViewDialog,
-  layers,
-  setLayers,
   layerFetchingStatus,
   onWindDirectionLayerSelect,
   onWindHeatmapLayerSelect,
@@ -145,10 +145,6 @@ const LayersCombobox = ({
   onRipCurrentForecastLayerSelect,
   onSnowLayerSelect,
 }: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
-  layers: Layer[]
-  setLayers: React.Dispatch<React.SetStateAction<Layer[]>>
   layerFetchingStatus: Map<Layer, boolean>
   onWindDirectionLayerSelect: () => void
   onWindHeatmapLayerSelect: () => void
@@ -160,6 +156,19 @@ const LayersCombobox = ({
   onRipCurrentForecastLayerSelect: () => void
   onSnowLayerSelect: () => void
 }) => {
+  // Constants:
+  const {
+    useSmallView,
+    toggleSmallViewDialog,  
+  } = useContext(UtilitiesContext)
+  const {
+    layers,
+    setLayers,
+  } = useContext(MapContext)
+
+  // State:
+  const [layersPopoverOpen, setLayersPopoverOpen] = useState(false)
+
   // Memo:
   const LAYERS = useMemo(() => [
     { id: Layer.WIND_DIRECTION, icon: <WindIcon className='text-inherit transition-all' />, name: 'Wind Direction' },
@@ -173,9 +182,6 @@ const LayersCombobox = ({
     { id: Layer.SNOW, icon: <SnowflakeIcon className='text-inherit transition-all' />, name: 'Snow' },
     // { id: Layer.CYCLONE_TRACK, icon: <ShellIcon className='text-inherit transition-all' />, name: 'Cyclone Track' },
   ], [])
-
-  // State:
-  const [layersPopoverOpen, setLayersPopoverOpen] = useState(false)
 
   // Functions:
   const onLayerSelect = (currentValue: string, layer: typeof LAYERS[number]) => {

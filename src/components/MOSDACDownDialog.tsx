@@ -1,10 +1,7 @@
 // Packages:
-import React from 'react'
+import React, { useContext } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
-
-// Typescript:
-import type { DialogProps } from '@radix-ui/react-dialog'
 
 // Constants:
 const geistSans = Geist({
@@ -22,26 +19,32 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+
 // Functions:
-const MOSDACDownDialog = ({
-  isOpen,
-  onOpenChange,
-}: {
-  isOpen: boolean
-  onOpenChange: DialogProps['onOpenChange']
-}) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogOverlay className='z-[1001]' />
-    <DialogContent className={cn('z-[1001]', `${geistSans.className} font-sans`)}>
-      <DialogHeader>
-        <DialogTitle>MOSDAC servers are down</DialogTitle>
-        <DialogDescription>
-          We get our data from <a className='underline font-medium' href='https://mosdac.gov.in/live/' target='_blank'>MOSDAC</a>, and it looks like their server is down.
-        </DialogDescription>
-      </DialogHeader>
-    </DialogContent>
-  </Dialog>
-)
+const MOSDACDownDialog = () => {
+  // Constants:
+  const {
+    isMOSDACDownDialogOpen,
+    setIsMOSDACDownDialogOpen,
+  } = useContext(UtilitiesContext)
+
+  // Return:
+  return (
+    <Dialog open={isMOSDACDownDialogOpen} onOpenChange={setIsMOSDACDownDialogOpen}>
+      <DialogOverlay className='z-[1001]' />
+      <DialogContent className={cn('z-[1001]', `${geistSans.className} font-sans`)}>
+        <DialogHeader>
+          <DialogTitle>MOSDAC servers are down</DialogTitle>
+          <DialogDescription>
+            We get our data from <a className='underline font-medium' href='https://mosdac.gov.in/live/' target='_blank'>MOSDAC</a>, and it looks like their server is down.
+          </DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // Exports:
 export default MOSDACDownDialog

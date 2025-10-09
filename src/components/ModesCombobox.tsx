@@ -1,5 +1,5 @@
 // Packages:
-import React, { useMemo, useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +36,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+import MapContext from '@/context/MapContext'
 
 // Functions:
 const ModeCommand = ({
@@ -109,18 +113,22 @@ const ModeCommand = ({
 )
 
 const ModeCombobox = ({
-  useSmallView,
-  toggleSmallViewDialog,
-  selectedMode,
   onSelect,
   modeFetchingStatus,
 }: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
-  selectedMode: MOSDACImageMode
   onSelect: (mode: MOSDACImageMode) => void
   modeFetchingStatus: Map<string, number | boolean>
 }) => {
+  // Constants:
+  const {
+    useSmallView,
+    toggleSmallViewDialog,  
+  } = useContext(UtilitiesContext)
+  const { mode: selectedMode } = useContext(MapContext)
+
+  // State:
+  const [legendsPopoverOpen, setLegendsPopoverOpen] = useState(false)
+
   // Memo:
   const MODES = useMemo(() => [
     { id: MOSDACImageMode.GREYSCALE, className: 'bg-gray-400', name: 'Greyscale' },
@@ -130,9 +138,6 @@ const ModeCombobox = ({
     { id: MOSDACImageMode.FERRET, className: 'bg-[linear-gradient(90deg,#cc0000_0%,#ff0000_15%,#ff7b00_25%,#ffff00_35%,#00ff00_45%,#00c8c8_55%,#0060ff_65%,#9900ff_75%,#550077_100%)]', name: 'Ferret' },
     { id: MOSDACImageMode.NHC, className: 'bg-[linear-gradient(90deg,#ff0000_0%,#ffae00_20%,#ffff00_40%,#00ff00_60%,#00e7ff_80%,#0000ff_90%,#000088_100%)]', name: 'NHC' },
   ], [])
-
-  // State:
-  const [legendsPopoverOpen, setLegendsPopoverOpen] = useState(false)
 
   // Return:
   return (

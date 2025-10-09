@@ -1,5 +1,5 @@
 // Packages:
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { formatBytes, getIndexedDBQuota, getIndexedDBSize } from '@/lib/indexeddb'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
@@ -40,14 +40,17 @@ import {
 } from '@/components/ui/alert-dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+
 // Functions:
-const SettingsDialog = ({
-  useSmallView,
-  toggleSmallViewDialog,
-}: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
-}) => {
+const SettingsDialog = () => {
+  // Constants:
+  const {
+    useSmallView,
+    toggleSmallViewDialog,  
+  } = useContext(UtilitiesContext)
+
   // State:
   const [isOpen, setIsOpen] = useState(false)
   const [localQuota, setLocalQuota] = useState({

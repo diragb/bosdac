@@ -1,5 +1,5 @@
 // Packages:
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import sleep from 'sleep-promise'
@@ -38,6 +38,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+
+// Context:
+import UtilitiesContext from '@/context/UtilitiesContext'
+import MapContext from '@/context/MapContext'
 
 // Functions:
 const HistoryCommand = ({
@@ -118,24 +122,30 @@ const HistoryCommand = ({
 )
 
 const HistoryCombobox = ({
-  useSmallView,
-  toggleSmallViewDialog,
   logs,
-  selectedLog,
   onSelect,
   historicalLogsFetchingStatus,
   isHistoryOn,
   setIsHistoryOn,
 }: {
-  useSmallView: boolean
-  toggleSmallViewDialog: (state: boolean) => Promise<void>
   logs: MOSDACLogData
-  selectedLog: MOSDACLog | null
   onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
   historicalLogsFetchingStatus: Map<string, number | boolean>
   isHistoryOn: boolean
   setIsHistoryOn: React.Dispatch<React.SetStateAction<boolean>>
 }) => {
+  // Constants:
+  const {
+    useSmallView,
+    toggleSmallViewDialog,  
+  } = useContext(UtilitiesContext)
+  const { selectedLog } = useContext(MapContext)
+
+  // State:
+  const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false)
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+  const [animateResetIcon, setAnimateResetIcon] = useState(false)
+
   // Memo:
   const localTimezoneOffset = useMemo(() => {
     const offsetMinutes = new Date().getTimezoneOffset()
@@ -146,31 +156,8 @@ const HistoryCombobox = ({
     return `${sign}${hours}:${minutes}`
   }, [])
 
-  // State:
-  const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false)
-  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-  const [animateResetIcon, setAnimateResetIcon] = useState(false)
-
-  // Effects:
-  useEffect(() => {
-    if (!historyPopoverOpen || !selectedLog?.name) return
-
-    const raf = requestAnimationFrame(() => {
-      const root = scrollAreaRef.current ?? undefined
-      const viewport = root?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null
-      const escape = (window as unknown as { CSS: { escape: (input: string) => void } }).CSS?.escape ?? ((s: string) => s.replace(/"/g, '\\"'))
-      const selector = `[data-value="${escape(selectedLog.name)}"]`
-      const target = (viewport ?? root)?.querySelector(selector) as HTMLElement | null
-      if (target) {
-        target.scrollIntoView({ block: 'center', inline: 'nearest' })
-      }
-    })
-
-    return () => cancelAnimationFrame(raf)
-  }, [historyPopoverOpen, selectedLog?.name])
-
   // Functions:
-  const formatGMTToLocal12Hours = (time: string) => {
+  const formatGMTToLocal12Hours = useCallback((time: string) => {
     if (!time || (time.length !== 3 && time.length !== 4)) return time
 
     const normalized = time.padStart(4, '0')
@@ -190,7 +177,25 @@ const HistoryCombobox = ({
     const hours12 = ((localHours24 + 11) % 12) + 1
     const minutesStr = String(localMinutes).padStart(2, '0')
     return `${hours12}:${minutesStr} ${ampm}`
-  }
+  }, [])
+
+  // Effects:
+  useEffect(() => {
+    if (!historyPopoverOpen || !selectedLog?.name) return
+
+    const raf = requestAnimationFrame(() => {
+      const root = scrollAreaRef.current ?? undefined
+      const viewport = root?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null
+      const escape = (window as unknown as { CSS: { escape: (input: string) => void } }).CSS?.escape ?? ((s: string) => s.replace(/"/g, '\\"'))
+      const selector = `[data-value="${escape(selectedLog.name)}"]`
+      const target = (viewport ?? root)?.querySelector(selector) as HTMLElement | null
+      if (target) {
+        target.scrollIntoView({ block: 'center', inline: 'nearest' })
+      }
+    })
+
+    return () => cancelAnimationFrame(raf)
+  }, [historyPopoverOpen, selectedLog?.name])
 
   // Return:
   return (
