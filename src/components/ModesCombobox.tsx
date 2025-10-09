@@ -112,19 +112,17 @@ const ModeCommand = ({
   </Command>
 )
 
-const ModeCombobox = ({
-  onSelect,
-  modeFetchingStatus,
-}: {
-  onSelect: (mode: MOSDACImageMode) => void
-  modeFetchingStatus: Map<string, number | boolean>
-}) => {
+const ModeCombobox = () => {
   // Constants:
   const {
     useSmallView,
     toggleSmallViewDialog,  
   } = useContext(UtilitiesContext)
-  const { mode: selectedMode } = useContext(MapContext)
+  const {
+    mode: selectedMode,
+    onModeSelect: onSelect,
+    modeFetchingStatus,
+  } = useContext(MapContext)
 
   // State:
   const [legendsPopoverOpen, setLegendsPopoverOpen] = useState(false)

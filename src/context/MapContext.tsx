@@ -178,7 +178,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
           if (forProperty === 'log') {
             setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
               const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-              newHistoricalLogsFetchingStatus.set(log.name, ++fetchedImageCount/requests.length)
+              newHistoricalLogsFetchingStatus.set(log.name + '_' + mode, ++fetchedImageCount/requests.length)
               return newHistoricalLogsFetchingStatus
             })
           } else if (forProperty === 'mode') {
@@ -213,6 +213,8 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
 
   const onLogSelect = async (log: MOSDACLog, logIndex: number) => {
     const previousLog = selectedLog
+    const key = log.name + '_' + mode
+
     try {
       setSelectedLog(log)
       setSelectedLogIndex(logIndex)
@@ -225,7 +227,8 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
         }
       }
 
-      const status = logDownloadStatusRef.current.get(log.name)
+      const status = logDownloadStatusRef.current.get(key)
+
       if (
         status !== undefined &&
         [
@@ -235,13 +238,13 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
       ) return
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.set(log.name, 0)
+        newHistoricalLogsFetchingStatus.set(key, 0)
         return newHistoricalLogsFetchingStatus
       })
-      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.DOWNLOADING)
+      logDownloadStatusRef.current.set(key, LogDownloadStatus.DOWNLOADING)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADING)
+        newLogDownloadStatus.set(key, LogDownloadStatus.DOWNLOADING)
         return newLogDownloadStatus
       })
       const totalSpeed = (await fetchMOSDACImages(log, mode, 'log'))
@@ -253,13 +256,13 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
       }
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.delete(log.name)
+        newHistoricalLogsFetchingStatus.delete(key)
         return newHistoricalLogsFetchingStatus
       })
-      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.DOWNLOADED)
+      logDownloadStatusRef.current.set(key, LogDownloadStatus.DOWNLOADED)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.DOWNLOADED)
+        newLogDownloadStatus.set(key, LogDownloadStatus.DOWNLOADED)
         return newLogDownloadStatus
       })
     } catch (error) {
@@ -277,13 +280,13 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
       setSelectedLog(previousLog)
       setHistoricalLogsFetchingStatus(_historicalLogsFetchingStatus => {
         const newHistoricalLogsFetchingStatus = new Map(_historicalLogsFetchingStatus)
-        newHistoricalLogsFetchingStatus.set(log.name, false)
+        newHistoricalLogsFetchingStatus.set(key, false)
         return newHistoricalLogsFetchingStatus
       })
-      logDownloadStatusRef.current.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
+      logDownloadStatusRef.current.set(key, LogDownloadStatus.FAILED_TO_DOWNLOAD)
       setLogDownloadStatus(_logDownloadStatus => {
         const newLogDownloadStatus = new Map(_logDownloadStatus)
-        newLogDownloadStatus.set(log.name, LogDownloadStatus.FAILED_TO_DOWNLOAD)
+        newLogDownloadStatus.set(key, LogDownloadStatus.FAILED_TO_DOWNLOAD)
         return newLogDownloadStatus
       })
     }
@@ -342,7 +345,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
   // Return:
   return (
     <MapContext.Provider
-      value={useMemo(() => ({
+      value={{
         isHistoryOn,
         setIsHistoryOn,
         logs,
@@ -367,23 +370,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
         setOpacity,
         onLogSelect,
         onModeSelect,
-      }), [
-        isHistoryOn,
-        logs,
-        reversedLogs,
-        historicalLogsFetchingStatus,
-        logDownloadStatus,
-        numberOfLogsDownloaded,
-        averageLogDownloadSpeed,
-        layers,
-        isFetchingImages,
-        images,
-        selectedLog,
-        selectedLogIndex,
-        modeFetchingStatus,
-        mode,
-        opacity,
-      ])}
+      }}
     >
       {children}
     </MapContext.Provider>

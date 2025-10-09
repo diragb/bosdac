@@ -1,5 +1,5 @@
 // Packages:
-import React, { useMemo, useState, useCallback, useContext } from 'react'
+import React, { useState, useCallback, useContext } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import prettyMilliseconds from 'pretty-ms'
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 
 // Constants:
-import { ANIMATION_SPEEDS } from '@/components/SidePanel'
+import { ANIMATION_SPEEDS } from '@/hooks/useAnimation'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -62,9 +62,11 @@ import UtilitiesContext from '@/context/UtilitiesContext'
 import useAnimation from '@/hooks/useAnimation'
 import MapContext from '@/context/MapContext'
 import AnimationContext from '@/context/AnimationContext'
+import { MOSDACImageMode } from '@/pages/api/history'
 
 // Functions:
 const AnimationContent = ({
+  mode,
   reversedLogs,
   selectedReversedLogIndex,
   onLogSelect,
@@ -88,7 +90,7 @@ const AnimationContent = ({
   averageLogDownloadSpeed,
   numberOfFrames,
 }: {
-  useSmallView: boolean
+  mode: MOSDACImageMode
   reversedLogs: MOSDACLogData
   selectedReversedLogIndex: number
   onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
@@ -139,7 +141,7 @@ const AnimationContent = ({
             <div className='absolute -top-1 flex justify-between items-center w-full h-full px-[7px]'>
               {
                 Array.from(Array(reversedLogs.length)).map((_, index) => {
-                  const _logDownloadStatus = logDownloadStatus.get(reversedLogs[index].name)
+                  const _logDownloadStatus = logDownloadStatus.get(reversedLogs[index].name + '_' + mode)
 
                   return (
                     <div
@@ -326,6 +328,7 @@ const AnimationCombobox = ({
     onLogSelect,
     logDownloadStatus,
     averageLogDownloadSpeed,
+    mode,
   } = useContext(MapContext)
   const {
     isAnimationOn,
@@ -399,7 +402,7 @@ const AnimationCombobox = ({
                 <DialogDescription>Select a layer from the list below</DialogDescription>
               </VisuallyHidden>
               <AnimationContent
-                useSmallView={useSmallView}
+                mode={mode}
                 reversedLogs={reversedLogs}
                 selectedReversedLogIndex={selectedReversedLogIndex}
                 onLogSelect={onLogSelect}
@@ -435,7 +438,7 @@ const AnimationCombobox = ({
             </PopoverTrigger>
             <PopoverContent className={cn('z-[1001] w-[600px] px-2 py-3 bg-card', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
               <AnimationContent
-                useSmallView={useSmallView}
+                mode={mode}
                 reversedLogs={reversedLogs}
                 selectedReversedLogIndex={selectedReversedLogIndex}
                 onLogSelect={onLogSelect}

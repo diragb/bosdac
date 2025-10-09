@@ -65,6 +65,7 @@ import { ScrollArea } from './ui/scroll-area'
 // Context:
 import UtilitiesContext from '@/context/UtilitiesContext'
 import MapContext from '@/context/MapContext'
+import LayersContext from '@/context/LayersContext'
 
 // Functions:
 const LayersCommand = ({
@@ -133,29 +134,7 @@ const LayersCommand = ({
   </Command>
 )
 
-const LayersCombobox = ({
-  layerFetchingStatus,
-  onWindDirectionLayerSelect,
-  onWindHeatmapLayerSelect,
-  onFireSmokeLayerSelect,
-  onFireSmokeHeatmapLayerSelect,
-  onHeavyRainLayerSelect,
-  onHeavyRainForecastLayerSelect,
-  onCloudburstForecastLayerSelect,
-  onRipCurrentForecastLayerSelect,
-  onSnowLayerSelect,
-}: {
-  layerFetchingStatus: Map<Layer, boolean>
-  onWindDirectionLayerSelect: () => void
-  onWindHeatmapLayerSelect: () => void
-  onFireSmokeLayerSelect: () => void
-  onFireSmokeHeatmapLayerSelect: () => void
-  onHeavyRainLayerSelect: () => void
-  onHeavyRainForecastLayerSelect: () => void
-  onCloudburstForecastLayerSelect: () => void
-  onRipCurrentForecastLayerSelect: () => void
-  onSnowLayerSelect: () => void
-}) => {
+const LayersCombobox = () => {
   // Constants:
   const {
     useSmallView,
@@ -165,6 +144,18 @@ const LayersCombobox = ({
     layers,
     setLayers,
   } = useContext(MapContext)
+  const {
+    layerFetchingStatus,
+    onWindDirectionLayerSelect,
+    onWindHeatmapLayerSelect,
+    onFireSmokeLayerSelect,
+    onFireSmokeHeatmapLayerSelect,
+    onHeavyRainLayerSelect,
+    onHeavyRainForecastLayerSelect,
+    onCloudburstForecastLayerSelect,
+    onRipCurrentForecastLayerSelect,
+    onSnowLayerSelect,
+  } = useContext(LayersContext)
 
   // State:
   const [layersPopoverOpen, setLayersPopoverOpen] = useState(false)

@@ -1,14 +1,5 @@
-/// Typescript:
+// Typescript:
 import type { NextApiRequest, NextApiResponse } from 'next'
-
-export enum MOSDACImageMode {
-  GREYSCALE = 'GREYSCALE',
-  REDBLUE = 'REDBLUE',
-  RAINBOW = 'RAINBOW',
-  SST_36 = 'SST_36',
-  FERRET = 'FERRET',
-  NHC = 'NHC',
-}
 
 // Exports:
 export const getMOSDACRipCurrentInfo = async (date: string, hour: string) => {

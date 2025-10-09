@@ -1,5 +1,5 @@
 // Packages:
-import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useMemo, useState } from 'react'
 
 // Typescript:
 interface IAnimationContext {

@@ -23,6 +23,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
 import { AnimationContextProvider } from '@/context/AnimationContext'
 import { MapContextProvider } from '@/context/MapContext'
+import { LayersContextProvider } from '@/context/LayersContext'
 
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
@@ -37,7 +38,9 @@ const App = ({ Component, pageProps }: AppProps) => (
       <UtilitiesContextProvider>
         <AnimationContextProvider>
           <MapContextProvider>
-            <Component {...pageProps} />
+            <LayersContextProvider>
+              <Component {...pageProps} />
+            </LayersContextProvider>
           </MapContextProvider>
         </AnimationContextProvider>
       </UtilitiesContextProvider>

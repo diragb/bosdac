@@ -3,7 +3,36 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import sleep from 'sleep-promise'
 
 // Constants:
-import { ANIMATION_SPEEDS, LogDownloadStatus } from '@/components/SidePanel'
+import { LogDownloadStatus } from '@/components/SidePanel'
+
+export const ANIMATION_SPEEDS = [
+  {
+    id: '3mps',
+    label: '3m/s',
+    value: 50,
+  },
+  {
+    id: '6mps',
+    label: '6m/s',
+    value: 100,
+  },
+  {
+    id: '15mps',
+    label: '15m/s',
+    value: 250,
+  },
+  {
+    id: '30mps',
+    label: '30m/s',
+    value: 500,
+  },
+  {
+    id: '1hps',
+    label: '1h/s',
+    value: 1000,
+  },
+]
+
 const LONG_PRESS_DELAY = 500
 
 // Context:
@@ -22,6 +51,7 @@ const useAnimation = () => {
     selectedLogIndex,
     onLogSelect,
     logDownloadStatus,
+    mode,
   } = useContext(MapContext)
 
   // State:
@@ -42,13 +72,13 @@ const useAnimation = () => {
 
     for (let i = animationRangeIndices[0]; i <= animationRangeIndices[1]; i++) {
       const relevantLog = reversedLogs[i]
-      if (relevantLog && logDownloadStatus.get(relevantLog.name) === LogDownloadStatus.DOWNLOADED) {
+      if (relevantLog && logDownloadStatus.get(relevantLog.name + '_' + mode) === LogDownloadStatus.DOWNLOADED) {
         if (totalUnloadedFrames > 0) totalUnloadedFrames--
       }
     }
 
     return totalUnloadedFrames
-  }, [reversedLogs, animationRangeIndices, logDownloadStatus])
+  }, [reversedLogs, animationRangeIndices, logDownloadStatus, mode])
 
   // Functions:
   const moveOneFrameBackward = (_selectedReversedLogIndex: number, allowRepeat?: boolean) => {

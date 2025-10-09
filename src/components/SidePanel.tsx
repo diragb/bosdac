@@ -10,54 +10,10 @@ export enum LogDownloadStatus {
   DOWNLOADED = 1,
   FAILED_TO_DOWNLOAD = 2,
 }
-
-import type { MOSDACLogData, MOSDACLog } from '../pages/api/log'
-import { MOSDACImageMode } from '../pages/api/history'
-
-export interface SidePanelProps {
-  layerFetchingStatus: Map<Layer, boolean>
-  onWindDirectionLayerSelect: () => Promise<void>
-  onWindHeatmapLayerSelect: () => Promise<void>
-  onFireSmokeLayerSelect: () => Promise<void>
-  onFireSmokeHeatmapLayerSelect: () => Promise<void>
-  onHeavyRainLayerSelect: () => Promise<void>
-  onHeavyRainForecastLayerSelect: () => Promise<void>
-  onCloudburstForecastLayerSelect: () => Promise<void>
-  onRipCurrentForecastLayerSelect: () => Promise<void>
-  onSnowLayerSelect: () => Promise<void>
-}
-
 // Constants:
-export const ANIMATION_SPEEDS = [
-  {
-    id: '3mps',
-    label: '3m/s',
-    value: 50,
-  },
-  {
-    id: '6mps',
-    label: '6m/s',
-    value: 100,
-  },
-  {
-    id: '15mps',
-    label: '15m/s',
-    value: 250,
-  },
-  {
-    id: '30mps',
-    label: '30m/s',
-    value: 500,
-  },
-  {
-    id: '1hps',
-    label: '1h/s',
-    value: 1000,
-  },
-]
 
 // Components:
-import LayersCombobox, { Layer } from '@/components/LayersCombobox'
+import LayersCombobox from '@/components/LayersCombobox'
 import HistoryCombobox from '@/components/HistoryCombobox'
 import LegendsCombobox from '@/components/ModesCombobox'
 import { Slider } from '@/components/ui/slider'
@@ -69,31 +25,14 @@ import MapContext from '@/context/MapContext'
 import UtilitiesContext from '@/context/UtilitiesContext'
 
 // Functions:
-const SidePanel = ({
-  layerFetchingStatus,
-  onWindDirectionLayerSelect,
-  onWindHeatmapLayerSelect,
-  onFireSmokeLayerSelect,
-  onFireSmokeHeatmapLayerSelect,
-  onHeavyRainLayerSelect,
-  onHeavyRainForecastLayerSelect,
-  onCloudburstForecastLayerSelect,
-  onRipCurrentForecastLayerSelect,
-  onSnowLayerSelect,
-}: SidePanelProps) => {
+const SidePanel = () => {
   // Constants:
   const { useSmallView } = useContext(UtilitiesContext)
   const {
     logs,
-    onLogSelect,
-    historicalLogsFetchingStatus,
     selectedLogIndex,
-    isHistoryOn,
-    setIsHistoryOn,
     opacity,
     setOpacity,
-    onModeSelect,
-    modeFetchingStatus,
   } = useContext(MapContext)
 
   // Return:
@@ -104,30 +43,10 @@ const SidePanel = ({
         !useSmallView && 'absolute left-3 top-3',
       )}
     >
-      <LayersCombobox
-        layerFetchingStatus={layerFetchingStatus}
-        onWindDirectionLayerSelect={onWindDirectionLayerSelect}
-        onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
-        onFireSmokeLayerSelect={onFireSmokeLayerSelect}
-        onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
-        onHeavyRainLayerSelect={onHeavyRainLayerSelect}
-        onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
-        onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
-        onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
-        onSnowLayerSelect={onSnowLayerSelect}
-      />
-      <HistoryCombobox
-        logs={logs}
-        onSelect={onLogSelect}
-        historicalLogsFetchingStatus={historicalLogsFetchingStatus}
-        isHistoryOn={isHistoryOn}
-        setIsHistoryOn={setIsHistoryOn}
-      />
+      <LayersCombobox />
+      <HistoryCombobox />
       <AnimationCombobox selectedReversedLogIndex={logs.length - 1 - selectedLogIndex} />
-      <LegendsCombobox
-        onSelect={onModeSelect}
-        modeFetchingStatus={modeFetchingStatus}
-      />
+      <LegendsCombobox />
       <div className='flex flex-col gap-2.5 w-full p-2 pb-2.5 border bg-secondary rounded-md'>
         <div className='flex items-center justify-between w-full'>
           <span className='text-xs font-semibold'>Opacity</span>

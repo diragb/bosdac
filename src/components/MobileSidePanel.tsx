@@ -18,25 +18,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import SidePanel, { type SidePanelProps } from '@/components/SidePanel'
+import SidePanel from '@/components/SidePanel'
 import { Button } from '@/components/ui/button'
 
 // Context:
 import UtilitiesContext from '@/context/UtilitiesContext'
 
 // Functions:
-const MobileSidePanel = ({
-  layerFetchingStatus,
-  onWindDirectionLayerSelect,
-  onWindHeatmapLayerSelect,
-  onFireSmokeLayerSelect,
-  onFireSmokeHeatmapLayerSelect,
-  onHeavyRainLayerSelect,
-  onHeavyRainForecastLayerSelect,
-  onCloudburstForecastLayerSelect,
-  onRipCurrentForecastLayerSelect,
-  onSnowLayerSelect,
-}: SidePanelProps) => {
+const MobileSidePanel = () => {
   // Constants:
   const {
     isSidePanelPopoverOpen,
@@ -66,18 +55,7 @@ const MobileSidePanel = ({
             />
           )
         }
-        <SidePanel
-          layerFetchingStatus={layerFetchingStatus}
-          onWindDirectionLayerSelect={onWindDirectionLayerSelect}
-          onWindHeatmapLayerSelect={onWindHeatmapLayerSelect}
-          onFireSmokeLayerSelect={onFireSmokeLayerSelect}
-          onFireSmokeHeatmapLayerSelect={onFireSmokeHeatmapLayerSelect}
-          onHeavyRainLayerSelect={onHeavyRainLayerSelect}
-          onHeavyRainForecastLayerSelect={onHeavyRainForecastLayerSelect}
-          onCloudburstForecastLayerSelect={onCloudburstForecastLayerSelect}
-          onRipCurrentForecastLayerSelect={onRipCurrentForecastLayerSelect}
-          onSnowLayerSelect={onSnowLayerSelect}
-        />
+        <SidePanel />
       </PopoverContent>
     </Popover>
   )

@@ -6,6 +6,7 @@ import sleep from 'sleep-promise'
 
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
+import type { MOSDACImageMode } from '@/pages/api/history'
 
 // Assets:
 import { CheckIcon, FrownIcon, Loader2Icon, RotateCcwIcon } from 'lucide-react'
@@ -48,6 +49,7 @@ const HistoryCommand = ({
   scrollAreaRef,
   logs,
   selectedLog,
+  mode,
   onSelect,
   setIsHistoryOn,
   historicalLogsFetchingStatus,
@@ -57,6 +59,7 @@ const HistoryCommand = ({
   scrollAreaRef: React.RefObject<HTMLDivElement | null>
   logs: MOSDACLogData
   selectedLog: MOSDACLog | null
+  mode: MOSDACImageMode
   onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
   setIsHistoryOn: (value: boolean) => void
   historicalLogsFetchingStatus: Map<string, number | boolean>
@@ -89,10 +92,10 @@ const HistoryCommand = ({
                 {log.when.date} {log.when.month} {log.when.year} <span className='font-bold'>{formatGMTToLocal12Hours(log.when.time)}</span> ({localTimezoneOffset}) {index === 0 ? ' [Latest]' : ''}
               </div>
               {
-                historicalLogsFetchingStatus.has(log.name) ? (
+                historicalLogsFetchingStatus.has(log.name + '_' + mode) ? (
                   <>
                     {
-                      historicalLogsFetchingStatus.get(log.name) === false ? (
+                      historicalLogsFetchingStatus.get(log.name + '_' + mode) === false ? (
                         <span title='Something went wrong..'>
                           <FrownIcon className='size-3 text-rose-500' />
                         </span>
@@ -121,25 +124,21 @@ const HistoryCommand = ({
   </Command>
 )
 
-const HistoryCombobox = ({
-  logs,
-  onSelect,
-  historicalLogsFetchingStatus,
-  isHistoryOn,
-  setIsHistoryOn,
-}: {
-  logs: MOSDACLogData
-  onSelect: (selectedLog: MOSDACLog, logIndex: number) => void
-  historicalLogsFetchingStatus: Map<string, number | boolean>
-  isHistoryOn: boolean
-  setIsHistoryOn: React.Dispatch<React.SetStateAction<boolean>>
-}) => {
+const HistoryCombobox = () => {
   // Constants:
   const {
     useSmallView,
     toggleSmallViewDialog,  
   } = useContext(UtilitiesContext)
-  const { selectedLog } = useContext(MapContext)
+  const {
+    logs,
+    selectedLog,
+    mode,
+    onLogSelect: onSelect,
+    historicalLogsFetchingStatus,
+    isHistoryOn,
+    setIsHistoryOn,
+  } = useContext(MapContext)
 
   // State:
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false)
@@ -251,6 +250,7 @@ const HistoryCombobox = ({
                 scrollAreaRef={scrollAreaRef}
                 logs={logs}
                 selectedLog={selectedLog}
+                mode={mode}
                 onSelect={onSelect}
                 setIsHistoryOn={setIsHistoryOn}
                 historicalLogsFetchingStatus={historicalLogsFetchingStatus}
@@ -294,6 +294,7 @@ const HistoryCombobox = ({
                 scrollAreaRef={scrollAreaRef}
                 logs={logs}
                 selectedLog={selectedLog}
+                mode={mode}
                 onSelect={onSelect}
                 setIsHistoryOn={setIsHistoryOn}
                 historicalLogsFetchingStatus={historicalLogsFetchingStatus}

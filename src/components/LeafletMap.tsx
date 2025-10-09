@@ -7,20 +7,6 @@ import dynamic from 'next/dynamic'
 
 // Typescript:
 import { Layer } from './LayersCombobox'
-import type { FirePoint } from '@/lib/toFirePoint'
-import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
-import type { CloudburstHeavyRainProcessedData } from '@/lib/processCloudburstHeavyRain'
-import type { MOSDACSnowInfo } from '@/pages/api/snow-info'
-
-interface LeafletMapProps {
-  windDirectionData: MOSDACWindVelocity | null
-  fireSmokeData: FirePoint[] | null
-  fireSmokeHeatmapData: HeatLatLngTuple[] | null
-  cloudburstHeavyRainData: CloudburstHeavyRainProcessedData | null
-  ripCurrentForecastData: string | null
-  snowInfo: MOSDACSnowInfo | null
-  snowImages: Map<string, string>
-}
 
 // Assets:
 import 'leaflet-velocity/dist/leaflet-velocity.css'
@@ -28,7 +14,7 @@ import 'leaflet-velocity'
 
 // Constants:
 import { BOXES } from '@/lib/box'
-import { CRS, HeatLatLngTuple, LatLngBoundsExpression } from 'leaflet'
+import { CRS, LatLngBoundsExpression } from 'leaflet'
 const CENTER: google.maps.LatLngLiteral = { lat: 22, lng: 78 }
 const ZOOM = 5
 
@@ -44,6 +30,7 @@ const CloudburstForecastLayer = dynamic(() => import('../components/CloudburstFo
 
 // Context:
 import MapContext from '@/context/MapContext'
+import LayersContext from '@/context/LayersContext'
 
 // Functions:
 const DragWatcher = ({
@@ -68,25 +55,17 @@ const LeafletMapErrorBoundary = ({ children }: { children: React.ReactNode }) =>
   )
 }
 
-const LeafletMapWithSuspense = (leafletMapProps: LeafletMapProps) => {
+const LeafletMapWithSuspense = () => {
   return (
     <Suspense fallback={<div>Loading map...</div>}>
       <LeafletMapErrorBoundary>
-        <LeafletMap {...leafletMapProps} />
+        <LeafletMap />
       </LeafletMapErrorBoundary>
     </Suspense>
   )
 }
 
-export const LeafletMap = ({
-  windDirectionData,
-  fireSmokeData,
-  fireSmokeHeatmapData,
-  cloudburstHeavyRainData,
-  ripCurrentForecastData,
-  snowInfo,
-  snowImages,
-}: LeafletMapProps) => {
+export const LeafletMap = () => {
   // Constants:
   const {
     layers,
@@ -95,6 +74,15 @@ export const LeafletMap = ({
     opacity,
     images,
   } = useContext(MapContext)
+  const {
+    windDirectionData,
+    fireSmokeData,
+    fireSmokeHeatmapData,
+    cloudburstHeavyRainData,
+    ripCurrentForecastData,
+    snowInfo,
+    snowImages,
+  } = useContext(LayersContext)
 
   // State:
   const [isDragging, setIsDragging] = useState(false)
