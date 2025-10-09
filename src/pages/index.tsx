@@ -10,11 +10,12 @@ import sleep from 'sleep-promise'
 import toFirePoint from '@/lib/toFirePoint'
 import toWindVelocityFormat from '@/lib/toWindVelocityFormat'
 import processCloudburstHeavyRain from '@/lib/processCloudburstHeavyRain'
+import useLogs from '@/hooks/useLogs'
 
 // Typescript:
 import type { Box } from '@/lib/box'
 import { Layer } from '@/components/LayersCombobox'
-import type { MOSDACLog, MOSDACLogData } from './api/log'
+import type { MOSDACLog } from './api/log'
 import { MOSDACImageMode } from './api/history'
 import type { MOSDACWindVelocity } from '@/lib/toWindVelocityFormat'
 import type { FirePoint } from '@/lib/toFirePoint'
@@ -38,20 +39,6 @@ const geistSans = Geist({
   subsets: ['latin'],
 })
 
-const MONTH_TO_NUM: Record<string, number> = {
-  JAN: 1,
-  FEB: 2,
-  MAR: 3,
-  APR: 4,
-  MAY: 5,
-  JUN: 6,
-  JUL: 7,
-  AUG: 8,
-  SEP: 9,
-  OCT: 10,
-  NOV: 11,
-  DEC: 12,
-}
 const LONG_PRESS_DELAY = 500
 
 // Components:
@@ -82,7 +69,6 @@ const Leaflet = () => {
   const [isMOSDACDownDialogOpen, setIsMOSDACDownDialogOpen] = useState(false)
   const [historicalLogsFetchingStatus, setHistoricalLogsFetchingStatus] = useState<Map<string, number | boolean>>(new Map())
   const [isHistoryOn, setIsHistoryOn] = useState(false)
-  const [logs, setLogs] = useState<MOSDACLogData>([])
   const [logDownloadStatus, setLogDownloadStatus] = useState<Map<string, LogDownloadStatus>>(new Map())
   const [numberOfLogsDownloaded, setNumberOfLogsDownloaded] = useState(0)
   const [averageLogDownloadSpeed, setAverageLogDownloadSpeed] = useState(0)
@@ -113,6 +99,7 @@ const Leaflet = () => {
   const [selectedAnimationSpeed, setSelectedAnimationSpeed] = useState<typeof ANIMATION_SPEEDS[number]>(ANIMATION_SPEEDS[0])
   const [isLongPressing, setIsLongPressing] = useState<'forward' | 'backward' | null>(null)
   const [repeat, setRepeat] = useState(false)
+  const { logs, isLoading: areLogsLoading, error: didLogsFetchThrowError } = useLogs()
 
   // Ref:
   const animationRangeIndicesRef = useRef(animationRangeIndices)
@@ -131,40 +118,6 @@ const Leaflet = () => {
       setIsShowSmallViewDialogVisible(false)
       await sleep(150)
       setIsShowSmallViewDialogRendering(false)
-    }
-  }
-  
-  const toSortableKey = (log: MOSDACLog) => {
-    const year = parseInt(log.when.year, 10)
-    const month = MONTH_TO_NUM[log.when.month.toUpperCase()] ?? 0
-    const date = parseInt(log.when.date, 10)
-
-    const time = log.when.time.padStart(4, '0')
-    const hours = parseInt(time.slice(0, 2), 10)
-    const minutes = parseInt(time.slice(2), 10)
-
-    return year * 1e8 + month * 1e6 + date * 1e4 + hours * 1e2 + minutes
-  }
-
-  const sortLogs = (logs: MOSDACLogData) => {
-    return [...logs].sort((a, b) => toSortableKey(b) - toSortableKey(a))
-  }
-
-  const getMOSDACLogData = async () => {
-    try {
-      const { data } = await axios.get('/api/log')
-      if (Array.isArray(data)) {
-        const sortedLogs = sortLogs(data)
-        setLogs(sortedLogs)
-        setSelectedLog(sortedLogs[0])
-        setSelectedLogIndex(sortedLogs.length - 1)
-        setAnimationRangeIndices([sortedLogs.length - 1 - 10, sortedLogs.length - 1])
-        onLogSelect(sortedLogs[0], 0)
-      }
-      else throw new Error(data)
-    } catch (error) {
-      console.error(`Upstream is fucked`, error)
-      setIsMOSDACDownDialogOpen(true)
     }
   }
 
@@ -986,8 +939,6 @@ const Leaflet = () => {
       storeName: 'bosdac-cache'
     })
 
-    getMOSDACLogData()
-
     const handleResize = () => {
       const isSmall = window.innerWidth < 820
       setUseSmallView(prev => {
@@ -1007,6 +958,18 @@ const Leaflet = () => {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (logs !== undefined && !areLogsLoading && !didLogsFetchThrowError && selectedLog === null) {
+      setSelectedLog(logs[0])
+      setSelectedLogIndex(logs.length - 1)
+      setAnimationRangeIndices([logs.length - 1 - 10, logs.length - 1])
+      onLogSelect(logs[0], 0)
+    } else if ((logs === undefined || logs.length === 0) && !areLogsLoading && didLogsFetchThrowError && selectedLog === null) {
+      console.error(`Upstream is fucked`, didLogsFetchThrowError)
+      setIsMOSDACDownDialogOpen(true)
+    }
+  }, [logs, areLogsLoading, didLogsFetchThrowError, selectedLog])
 
   useEffect(() => {
     return () => {
