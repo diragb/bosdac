@@ -101,7 +101,7 @@ const HistoryCommand = ({
                         </span>
                       ) : (
                         <div className='flex items-center justify-center gap-1'>
-                          <span className='text-xs font-medium'>{(((historicalLogsFetchingStatus.get(log.name) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
+                          <span className='text-xs font-medium'>{(((historicalLogsFetchingStatus.get(log.name + '_' + mode) as number | undefined) ?? 0) * 100).toFixed(0)}%</span>
                           <Loader2Icon className='size-3 animate-spin' />
                         </div>
                       )
