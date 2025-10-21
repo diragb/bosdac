@@ -74,7 +74,7 @@ const MapContext = createContext<IMapContext>({
 
 // Context:
 import UtilitiesContext from './UtilitiesContext'
-import AnimationContext from './AnimationContext'
+import GlobalAnimationContext from './GlobalAnimationContext'
 
 // Functions:
 export const MapContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -83,7 +83,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
   const {
     animationRangeIndices,
     setAnimationRangeIndices,
-  } = useContext(AnimationContext)
+  } = useContext(GlobalAnimationContext)
   const { logs, isLoading: areLogsLoading, error: didLogsFetchThrowError } = useLogs()
 
   // Ref:

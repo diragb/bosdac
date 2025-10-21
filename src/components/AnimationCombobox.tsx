@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 
 // Constants:
-import { ANIMATION_SPEEDS } from '@/hooks/useAnimation'
+import { ANIMATION_SPEEDS } from '@/context/AnimationContext'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -59,7 +59,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 // Context:
 import UtilitiesContext from '@/context/UtilitiesContext'
-import useAnimation from '@/hooks/useAnimation'
+import GlobalAnimationContext from '@/context/GlobalAnimationContext'
 import MapContext from '@/context/MapContext'
 import AnimationContext from '@/context/AnimationContext'
 import { MOSDACImageMode } from '@/pages/api/history'
@@ -322,7 +322,7 @@ const AnimationCombobox = ({
   const {
     animationRangeIndices,
     setAnimationRangeIndices,
-  } = useContext(AnimationContext)
+  } = useContext(GlobalAnimationContext)
   const {
     reversedLogs,
     onLogSelect,
@@ -345,7 +345,7 @@ const AnimationCombobox = ({
     selectedAnimationSpeed,
     setSelectedAnimationSpeed,
     numberOfFrames,
-  } = useAnimation()
+  } = useContext(AnimationContext)
 
   // State:
   const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)

@@ -21,6 +21,7 @@ import { Analytics } from '@vercel/analytics/next'
 
 // Context:
 import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
+import { GlobalAnimationContextProvider } from '@/context/GlobalAnimationContext'
 import { AnimationContextProvider } from '@/context/AnimationContext'
 import { MapContextProvider } from '@/context/MapContext'
 import { LayersContextProvider } from '@/context/LayersContext'
@@ -36,13 +37,15 @@ const App = ({ Component, pageProps }: AppProps) => (
     </Head>
     <main className={`${geistSans.className} font-sans`}>
       <UtilitiesContextProvider>
-        <AnimationContextProvider>
+        <GlobalAnimationContextProvider>
           <MapContextProvider>
-            <LayersContextProvider>
-              <Component {...pageProps} />
-            </LayersContextProvider>
+            <AnimationContextProvider>
+              <LayersContextProvider>
+                <Component {...pageProps} />
+              </LayersContextProvider>
+            </AnimationContextProvider>
           </MapContextProvider>
-        </AnimationContextProvider>
+        </GlobalAnimationContextProvider>
       </UtilitiesContextProvider>
       <Toaster />
       <Analytics />
