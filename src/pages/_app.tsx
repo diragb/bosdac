@@ -18,6 +18,7 @@ const geistSans = Geist({
 // Components:
 import { Toaster } from '@/components/ui/sonner'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // Context:
 import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
@@ -49,6 +50,7 @@ const App = ({ Component, pageProps }: AppProps) => (
       </UtilitiesContextProvider>
       <Toaster />
       <Analytics />
+      <SpeedInsights />
     </main>
   </>
 )
