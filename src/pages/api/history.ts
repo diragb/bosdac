@@ -51,44 +51,48 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Buffer<ArrayBuffer> | string>,
 ) {
-  const { bbox, date, month, year, formattedTimestamp } = req.query
-  let { mode } = req.query
-  if (
-    (bbox === undefined || typeof bbox !== 'string') ||
-    (date === undefined || typeof date !== 'string') ||
-    (month === undefined || typeof month !== 'string') ||
-    (year === undefined || typeof year !== 'string') ||
-    (formattedTimestamp === undefined || typeof formattedTimestamp !== 'string') ||
-    typeof mode === 'object'
-  ) return res.status(502).send('ERROR: Invalid query parameters')
+  try {
+    const { bbox, date, month, year, formattedTimestamp } = req.query
+    let { mode } = req.query
+    if (
+      (bbox === undefined || typeof bbox !== 'string') ||
+      (date === undefined || typeof date !== 'string') ||
+      (month === undefined || typeof month !== 'string') ||
+      (year === undefined || typeof year !== 'string') ||
+      (formattedTimestamp === undefined || typeof formattedTimestamp !== 'string') ||
+      typeof mode === 'object'
+    ) return res.status(502).send('ERROR: Invalid query parameters')
 
-  const URL = getMOSDACURL(
-    bbox,
-    date,
-    month,
-    year,
-    formattedTimestamp,
-    typeof mode === 'object' ? undefined : mode as MOSDACImageMode,
-  )
+    const URL = getMOSDACURL(
+      bbox,
+      date,
+      month,
+      year,
+      formattedTimestamp,
+      typeof mode === 'object' ? undefined : mode as MOSDACImageMode,
+    )
 
-  mode = mode === undefined ? MOSDACImageMode.GREYSCALE : mode
+    mode = mode === undefined ? MOSDACImageMode.GREYSCALE : mode
 
-  const upstream = await fetch(URL)
-  if (!upstream.ok) {
-    return res.status(upstream.status).send('ERROR: MOSDAC did not return any data.')
+    const upstream = await fetch(URL)
+    if (!upstream.ok) {
+      return res.status(upstream.status).send('ERROR: MOSDAC did not return any data.')
+    }
+
+    let buf: Buffer<ArrayBuffer>
+    const ctype = upstream.headers.get('content-type') || ''
+    if (ctype.includes('image/png')) {
+      buf = Buffer.from(await upstream.arrayBuffer())
+    } else {
+      const hex = (await upstream.text()).trim().replace(/\s+/g, '')
+      if (!/^[0-9a-f]+$/i.test(hex)) return res.status(502).send('ERROR: MOSDAC returned invalid data')
+      buf = Buffer.from(hex, 'hex')
+    }
+
+    res.setHeader('cache-control', 'public,max-age=3600')
+    res.setHeader('content-type', 'image/png')
+    res.status(200).send(buf)
+  } catch (error) {
+    return res.status(502).send(`ERROR: ${JSON.stringify(error as Error)}`)
   }
-
-  let buf: Buffer<ArrayBuffer>
-  const ctype = upstream.headers.get('content-type') || ''
-  if (ctype.includes('image/png')) {
-    buf = Buffer.from(await upstream.arrayBuffer())
-  } else {
-    const hex = (await upstream.text()).trim().replace(/\s+/g, '')
-    if (!/^[0-9a-f]+$/i.test(hex)) return res.status(502).send('ERROR: MOSDAC returned invalid data')
-    buf = Buffer.from(hex, 'hex')
-  }
-
-  res.setHeader('cache-control', 'public,max-age=3600')
-  res.setHeader('content-type', 'image/png')
-  res.status(200).send(buf)
 }
