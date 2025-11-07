@@ -16,7 +16,7 @@ const Document = () => (
   <Html lang='en'>
     <Head>
       {/* Primary Meta Tags */}
-      <title>{appName}</title>
+      <title>BOSDAC - Better MOSDAC</title>
       <meta name='title' content={appName} />
       <meta name='description' content={appDescription} />
       <meta name='application-name' content='BOSDAC' />

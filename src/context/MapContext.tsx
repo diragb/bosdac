@@ -37,6 +37,8 @@ interface IMapContext {
   setOpacity: React.Dispatch<React.SetStateAction<number>>
   onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
   onModeSelect: (newMode: MOSDACImageMode) => Promise<void>
+  zoom: number
+  setZoom: React.Dispatch<React.SetStateAction<number>>
 }
 
 // Assets:
@@ -45,6 +47,7 @@ import { FrownIcon } from 'lucide-react'
 // Constants:
 import { BOXES } from '@/lib/box'
 
+const ZOOM = 5
 const MapContext = createContext<IMapContext>({
   isHistoryOn: false,
   setIsHistoryOn: () => {},
@@ -70,6 +73,8 @@ const MapContext = createContext<IMapContext>({
   setOpacity: () => {},
   onLogSelect: async (_log: MOSDACLog, _logIndex: number) => {},
   onModeSelect: async (_newMode: MOSDACImageMode) => {},
+  zoom: ZOOM,
+  setZoom: () => {},
 })
 
 // Context:
@@ -104,6 +109,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
   const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number | boolean>>(new Map())
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
   const [opacity, setOpacity] = useState(0.85)
+  const [zoom, setZoom] = useState(ZOOM)
 
   // Memo:
   const reversedLogs = useMemo(() => [...logs].reverse(), [logs])
@@ -370,6 +376,8 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
         setOpacity,
         onLogSelect,
         onModeSelect,
+        zoom,
+        setZoom,
       }}
     >
       {children}

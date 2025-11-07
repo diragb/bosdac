@@ -14,6 +14,12 @@ interface IAnimationContext {
   isLongPressing: 'forward' | 'backward' | null
   repeat: boolean
   setRepeat: React.Dispatch<React.SetStateAction<boolean>>
+  showTimelapseRecordingControls: boolean
+  setShowTimelapseRecordingControls: React.Dispatch<React.SetStateAction<boolean>>
+  selectedTiles: Set<string>
+  setSelectedTiles: React.Dispatch<React.SetStateAction<Set<string>>>
+  isRecording: boolean
+  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>
   repeatRef: React.RefObject<boolean>
   play: () => Promise<void>
   pause: () => void
@@ -64,6 +70,12 @@ const AnimationContext = createContext<IAnimationContext>({
   isLongPressing: null,
   repeat: false,
   setRepeat: () => {},
+  showTimelapseRecordingControls: false,
+  setShowTimelapseRecordingControls: () => {},
+  selectedTiles: new Set(),
+  setSelectedTiles: () => {},
+  isRecording: false,
+  setIsRecording: () => {},
   repeatRef: { current: false },
   play: async () => {},
   pause: () => {},
@@ -73,6 +85,8 @@ const AnimationContext = createContext<IAnimationContext>({
 // Context:
 import GlobalAnimationContext from './GlobalAnimationContext'
 import MapContext from '@/context/MapContext'
+import { BOXES } from '@/lib/box'
+import getTileURLsForBox from '@/lib/getTileURLsForBox'
 
 // Functions:
 export const AnimationContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -85,17 +99,21 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     onLogSelect,
     logDownloadStatus,
     mode,
+    zoom,
   } = useContext(MapContext)
 
   // State:
   const [isAnimationOn, setIsAnimationOn] = useState(false)
   const [selectedAnimationSpeed, setSelectedAnimationSpeed] = useState<typeof ANIMATION_SPEEDS[number]>(ANIMATION_SPEEDS[0])
   const [isLongPressing, setIsLongPressing] = useState<'forward' | 'backward' | null>(null)
-  const [repeat, setRepeat] = useState(false)
+  const [repeat, setRepeat] = useState(true)
+  const [showTimelapseRecordingControls, setShowTimelapseRecordingControls] = useState(false)
+  const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set())
+  const [isRecording, setIsRecording] = useState(false)
 
   // Ref:
   const isLongPressingRef = useRef<'forward' | 'backward' | null>(null)
-  const repeatRef = useRef(false)
+  const repeatRef = useRef(true)
   const animationRangeIndicesRef = useRef(animationRangeIndices)
   const isAnimationOnRef = useRef(isAnimationOn)
 
@@ -112,6 +130,24 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
 
     return totalUnloadedFrames
   }, [reversedLogs, animationRangeIndices, logDownloadStatus, mode])
+
+  // TODO: Yet to verify working.
+  const tileURLsForSelectedTiles = useMemo(() => {
+    const tileURLs = new Map<string, string[]>()
+    const indicesGroups: [string, number, number][] = []
+    selectedTiles.forEach(selectedTile => {
+      const indexGroup = selectedTile.split('-')
+      const index = parseInt(indexGroup[0]), jindex = parseInt(indexGroup[1])
+      indicesGroups.push([selectedTile, index, jindex])
+    })
+
+    for (const indexGroup of indicesGroups) {
+      const box = BOXES[indexGroup[1]][indexGroup[2]]
+      tileURLs.set(indexGroup[0], getTileURLsForBox({ z: 5, box }))
+    }
+
+    return tileURLs
+  }, [selectedTiles])
 
   // Functions:
   const moveOneFrameBackward = (_selectedReversedLogIndex: number, allowRepeat?: boolean) => {
@@ -229,6 +265,10 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
       stopLongPress()
     }
   }, [stopLongPress])
+
+  // useEffect(() => {
+  //   console.log(tileURLsForSelectedTiles)
+  // }, [tileURLsForSelectedTiles])
   
   // Return:
   return (
@@ -244,6 +284,12 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         isLongPressing,
         repeat,
         setRepeat,
+        showTimelapseRecordingControls,
+        setShowTimelapseRecordingControls,
+        selectedTiles,
+        setSelectedTiles,
+        isRecording,
+        setIsRecording,
         repeatRef,
         play,
         pause,
@@ -254,6 +300,9 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         numberOfFrames,
         isLongPressing,
         repeat,
+        showTimelapseRecordingControls,
+        selectedTiles,
+        isRecording,
       ])}
     >
       {children}

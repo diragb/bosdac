@@ -14,7 +14,7 @@ import MobileSidePanel from '@/components/MobileSidePanel'
 import UtilitiesContext from '@/context/UtilitiesContext'
 
 // Functions:
-const Leaflet = () => {
+const BOSDAC = () => {
   // Constants:
   const { useSmallView } = useContext(UtilitiesContext)
   
@@ -43,4 +43,4 @@ const Leaflet = () => {
 }
 
 // Exports:
-export default Leaflet
+export default BOSDAC
