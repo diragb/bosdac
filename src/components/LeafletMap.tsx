@@ -34,7 +34,6 @@ const CloudburstForecastLayer = dynamic(() => import('../components/CloudburstFo
 import MapContext from '@/context/MapContext'
 import LayersContext from '@/context/LayersContext'
 import AnimationContext from '@/context/AnimationContext'
-import getTileURLsForBox from '@/lib/getTileURLsForBox'
 
 // Functions:
 const DragWatcher = ({
@@ -180,11 +179,12 @@ export const LeafletMap = () => {
         showTimelapseRecordingControls && (
           <div className='absolute z-[1000] w-screen h-screen'>
             {
-              imageOverlayBoundingBoxes.map((boxRow, index) => (
+              imageOverlayBoundingBoxes.map((boundingBoxRow, index) => (
                 <React.Fragment key={index}>
                   {
-                    boxRow.map((box, jindex) => {
+                    boundingBoxRow.map((boundingBox, jindex) => {
                       const key = `${index}-${jindex}`
+                      const box = BOXES[index][jindex]
 
                       return (
                         <div
@@ -192,14 +192,16 @@ export const LeafletMap = () => {
                           className={cn(
                             'absolute border-[1px] border-zinc-700 border-dashed cursor-pointer transition-colors',
                             selectedTiles.has(key) ? 'bg-emerald-400/20' : 'bg-zinc-600/30',
+                            (box.length > 1 || box.breadth > 1) && 'opacity-20',
                           )}
                           style={{
-                            top: box.top,
-                            left: box.left,
-                            width: box.width,
-                            height: box.height,
+                            top: boundingBox.top,
+                            left: boundingBox.left,
+                            width: boundingBox.width,
+                            height: boundingBox.height,
                           }}
                           onClick={() => {
+                            if (box.length > 1 || box.breadth > 1) return
                             setSelectedTiles(_selectedTiles => {
                               const newSelectedTiles = new Set(_selectedTiles)
                               if (newSelectedTiles.has(key)) newSelectedTiles.delete(key)

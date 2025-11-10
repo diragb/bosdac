@@ -1,0 +1,310 @@
+// Packages:
+import axios from 'axios'
+import { getMOSDACImageURL } from './map'
+import localforage from 'localforage'
+import xonsole from './xonsole'
+
+// Typescript:
+import type { Returnable } from '@/types/helpers'
+import type { MOSDACLog } from '@/pages/api/log'
+import type { MOSDACImageMode } from '@/pages/api/history'
+import { BOXES, type Box } from './box'
+import returnable from './returnable'
+
+// Exports:
+export const getLeafletTile = async (tileURL: string): Promise<Returnable<string, Error>> => {
+  try {
+    const data = (await axios.get<Blob>(tileURL, { responseType: 'blob' })).data
+    return returnable.success(URL.createObjectURL(data))
+  } catch (error) {
+    xonsole.error('getLeafletTile', error as Error, { tileURL })
+    return returnable.fail(error as Error)
+  }
+}
+
+export const getFourLeafletTilesInImageOverlayTile = async (
+  images: [string, string, string, string],
+  maxRetries = 3
+): Promise<Returnable<[string, string, string, string], Error>> => {
+  try {
+    const tiles: [string, string, string, string] = ['', '', '', '']
+    const failed = new Set<string>(images)
+
+    for (let attempt = 0; attempt < maxRetries && failed.size > 0; ++attempt) {
+      const results = await Promise.allSettled(
+        Array.from(failed).map(async tileURL => {
+          const { status, payload } = await getLeafletTile(tileURL)
+          return { tileURL, status, payload } as const
+        })
+      )
+  
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.status && typeof result.value.payload === 'string') {
+          const index = images.findIndex(image => image === result.value.tileURL)
+          tiles[index] = result.value.payload
+          failed.delete(result.value.tileURL)
+        }
+      }
+    }
+
+    return returnable.success(tiles)
+  } catch (error) {
+    xonsole.error('getFourLeafletTilesInImageOverlayTile', error as Error, { images, maxRetries })
+    return returnable.fail(error as Error)
+  }
+}
+
+export const fetchImageOverlayTile = async (box: Box, log: MOSDACLog, mode: MOSDACImageMode): Promise<Returnable<string, Error>> => {
+  try {
+    const imageURL = getMOSDACImageURL(box, log, mode)
+    const data = (await axios.get<Blob>(imageURL, { responseType: 'blob' })).data
+    return returnable.success(URL.createObjectURL(data))
+  } catch (error) {
+    xonsole.error('fetchImageOverlayTile', error as Error, { box, log, mode })
+    return returnable.fail(error as Error)
+  }
+}
+
+const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((res, rej) => {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => res(img)
+  img.onerror = rej
+  img.src = src
+})
+
+export const getProcessedImageOverlayTile = async ({
+  box,
+  leafletTileURLs,
+  log,
+  mode,
+  opacity,
+}: {
+  box: Box
+  leafletTileURLs: [string, string, string, string]
+  log: MOSDACLog
+  mode: MOSDACImageMode
+  opacity: number
+}) => {
+  try {
+    let imageOverlayObjectURL = ''
+    const key = box.bbox + mode + log.when.formatted
+    const cachedImageBlob = await localforage.getItem<Blob>(key)
+    if (cachedImageBlob !== null) imageOverlayObjectURL = URL.createObjectURL(cachedImageBlob)
+    else {
+      const fetchImageOverlayTileResult = await fetchImageOverlayTile(box, log, mode)
+      if (fetchImageOverlayTileResult.status) {
+        imageOverlayObjectURL = fetchImageOverlayTileResult.payload
+      } else throw fetchImageOverlayTileResult.payload
+    }
+
+    if (imageOverlayObjectURL.length === 0) throw new Error('Failed to fetch image overlay!')
+
+    const { status, payload } = await getFourLeafletTilesInImageOverlayTile(leafletTileURLs)
+    if (!status) throw payload
+
+    const [i00, i10, i01, i11, overlay] = await Promise.all([
+      ...payload.map(loadImage),
+      loadImage(imageOverlayObjectURL),
+    ])
+
+    const imageSize = 512
+    const tileSize = 256
+
+    const canvas = document.createElement('canvas')
+    canvas.width = imageSize
+    canvas.height = imageSize
+    const ctx = canvas.getContext('2d')!
+
+    ctx.drawImage(i00, 0,        0,        tileSize, tileSize)
+    ctx.drawImage(i01, tileSize, 0,        tileSize, tileSize)
+    ctx.drawImage(i10, 0,        tileSize, tileSize, tileSize)
+    ctx.drawImage(i11, tileSize, tileSize, tileSize, tileSize)
+
+    ctx.globalAlpha = opacity
+    ctx.drawImage(overlay, 0, 0, imageSize, imageSize)
+
+    const processedImageBlob = await new Promise<Blob>(resolve => {
+      canvas.toBlob(b => resolve(b!), 'image/png')
+    })
+    canvas.remove()
+
+    // const url = URL.createObjectURL(processedImageBlob)
+    // const a = document.createElement("a")
+    // a.href = url
+    // a.download = 'test.png'
+    // document.body.appendChild(a)
+    // a.click()
+    // a.remove()
+    // URL.revokeObjectURL(url)
+
+    return returnable.success(processedImageBlob)
+  } catch (error) {
+    xonsole.error('getProcessedImageOverlayTile', error as Error, { box, leafletTileURLs, log, mode })
+    return returnable.fail(error as Error)
+  }
+}
+
+export interface AnimationDimensions {
+  x: number
+  y: number
+  length: number
+  breadth: number
+}
+
+export const getAnimationDimensions = (selectedTileKeys: Set<string>): AnimationDimensions => {
+  if (selectedTileKeys.size === 1) {
+    const indices = [...selectedTileKeys][0].split('-'), index = parseInt(indices[0]), jindex = parseInt(indices[1])
+    const box = BOXES[index][jindex]
+    return {
+      x: box.x,
+      y: box.y,
+      length: box.length,
+      breadth: box.breadth,
+    }
+  }
+
+  const selectedTileKeysArray = Array(...selectedTileKeys)
+  const selectedTiles: (Box & { index: number, jindex: number })[] = []
+
+  let smallestX = Infinity, smallestY = Infinity, largestX = -Infinity, largestY = -Infinity
+  for (const selectedTileKey of selectedTileKeysArray) {
+    const indices = selectedTileKey.split('-'), index = parseInt(indices[0]), jindex = parseInt(indices[1])
+    const box = BOXES[index][jindex]
+    if (box) {
+      selectedTiles.push({
+        ...box,
+        index,
+        jindex,
+      })
+      if (box.x < smallestX) smallestX = box.x
+      if (box.y < smallestY) smallestY = box.y
+      if (box.x > largestX) largestX = box.x
+      if (box.y > largestY) largestY = box.y
+    }
+  }
+
+  let smallestBox: Box | null = null
+  let largestBox: Box | null = null
+
+  for (let i = 0; i < BOXES[0].length; i++) {
+    const box = BOXES[0][i]
+    const startX = box.x, startY = box.y
+    const endX = box.x + box.length - 1, endY = box.y + box.breadth - 1
+    if (
+      smallestBox === null &&
+      startX <= smallestX && smallestX <= endX &&
+      startY <= smallestY && smallestY <= endY
+    ) smallestBox = box
+
+    if (
+      largestBox === null &&
+      startX <= largestX && largestX <= endX &&
+      startY <= largestY && largestY <= endY
+    ) largestBox = box
+  }
+
+  if (
+    smallestBox === null ||
+    largestBox === null
+  ) throw new Error('Unable to find smallest and/or largest box.')
+
+  return {
+    x: smallestBox.x,
+    y: smallestBox.y,
+    length: ((largestBox.x - 1) + largestBox.length) - (smallestBox.x - 1),
+    breadth: ((largestBox.y - 1) + largestBox.breadth) - (smallestBox.y - 1),
+  }
+}
+
+export const createAnimationCanvas = (dimensions: AnimationDimensions) => {
+  const unitSize = 512
+  const width = dimensions.length * unitSize
+  const height = dimensions.breadth * unitSize
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, height)
+
+  return {
+    canvas,
+    width,
+    height,
+  }
+}
+
+export const getFrame = async ({
+  selectedTiles,
+  tileURLsForSelectedTiles,
+  log,
+  mode,
+  opacity,
+}: {
+  selectedTiles: Set<string>
+  tileURLsForSelectedTiles: Map<string, [string, string, string, string]>
+  log: MOSDACLog
+  mode: MOSDACImageMode
+  opacity: number
+}) => {
+  const overlayImageSize = 512
+  const dimensions = getAnimationDimensions(selectedTiles)
+  const { canvas } = createAnimationCanvas(dimensions)
+  const ctx = canvas.getContext('2d')!
+
+  const selectedTileKeysArray = Array(...selectedTiles)
+  const selectedBoxes: (Box & { index: number, jindex: number })[] = []
+
+  for (const selectedTileKey of selectedTileKeysArray) {
+    const indices = selectedTileKey.split('-'), index = parseInt(indices[0]), jindex = parseInt(indices[1])
+    const box = BOXES[index][jindex]
+    if (box) selectedBoxes.push({
+      ...box,
+      index,
+      jindex,
+    })
+  }
+
+  for (let x = dimensions.x, i = 0; x < dimensions.x + dimensions.length; x++, i++) {
+    for (let y = dimensions.y, j = 0; y < dimensions.y + dimensions.breadth; y++, j++) {
+      const selectedBox = selectedBoxes.find(_selectedBox => (
+        _selectedBox.x <= x && x <= (_selectedBox.x - 1 + _selectedBox.length) &&
+        _selectedBox.y <= y && y <= (_selectedBox.y - 1 + _selectedBox.breadth)
+      ))
+      if (!selectedBox) continue
+
+      const leafletTileURLs: [string, string, string, string] | undefined = tileURLsForSelectedTiles.get(`${selectedBox.index}-${selectedBox.jindex}`)
+      if (!leafletTileURLs) continue
+
+      const { status, payload } = await getProcessedImageOverlayTile({
+        box: selectedBox,
+        leafletTileURLs,
+        log,
+        mode,
+        opacity,
+      })
+      if (!status) continue
+      const processedOverlayObjectURL = URL.createObjectURL(payload)
+      const processedOverlay = await loadImage(processedOverlayObjectURL)
+
+      ctx.drawImage(processedOverlay, i * overlayImageSize, j * overlayImageSize, overlayImageSize, overlayImageSize)
+    }
+  }
+
+  const processedImageBlob = await new Promise<Blob>(resolve => {
+    canvas.toBlob(b => resolve(b!), 'image/png')
+  })
+  canvas.remove()
+
+  const url = URL.createObjectURL(processedImageBlob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = 'test.png'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}

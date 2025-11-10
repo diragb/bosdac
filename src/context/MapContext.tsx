@@ -1,9 +1,10 @@
 // Packages:
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import useLogs from '@/hooks/useLogs'
 import localforage from 'localforage'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { getMOSDACImageURL } from '@/lib/map'
 
 // Typescript:
 import type { Layer } from '@/components/LayersCombobox'
@@ -115,10 +116,6 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
   const reversedLogs = useMemo(() => [...logs].reverse(), [logs])
 
   // Functions:
-  const getMOSDACImageURL = useCallback((box: Box, log: MOSDACLog, mode: MOSDACImageMode) => {
-    return `/api/history?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
-  }, [])
-
   const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log'): Promise<number | null> => {
     try {
       let fetchedImageCount = 0

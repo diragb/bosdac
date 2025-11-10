@@ -18,7 +18,7 @@ export const getTileURLsForBox = ({
 }: {
   z: number
   box: Box
-}) => {
+}): [string, string, string, string] => {
   const eps = 1e-9
   const n = 2 ** z
 

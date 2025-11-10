@@ -87,6 +87,7 @@ import GlobalAnimationContext from './GlobalAnimationContext'
 import MapContext from '@/context/MapContext'
 import { BOXES } from '@/lib/box'
 import getTileURLsForBox from '@/lib/getTileURLsForBox'
+import { getAnimationDimensions, getFrame, getProcessedImageOverlayTile } from '@/lib/animation'
 
 // Functions:
 export const AnimationContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -98,8 +99,10 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     selectedLogIndex,
     onLogSelect,
     logDownloadStatus,
+    selectedLog,
+    opacity,
     mode,
-    zoom,
+    // zoom,
   } = useContext(MapContext)
 
   // State:
@@ -131,9 +134,8 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     return totalUnloadedFrames
   }, [reversedLogs, animationRangeIndices, logDownloadStatus, mode])
 
-  // TODO: Yet to verify working.
   const tileURLsForSelectedTiles = useMemo(() => {
-    const tileURLs = new Map<string, string[]>()
+    const tileURLs = new Map<string, [string, string, string, string]>()
     const indicesGroups: [string, number, number][] = []
     selectedTiles.forEach(selectedTile => {
       const indexGroup = selectedTile.split('-')
@@ -267,8 +269,57 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
   }, [stopLongPress])
 
   // useEffect(() => {
-  //   console.log(tileURLsForSelectedTiles)
+  //   for (const tile of tileURLsForSelectedTiles) {
+  //     const indices = tile[0].split('-'), index = parseInt(indices[0]), jindex = parseInt(indices[1])
+  //     const box = BOXES[index][jindex]
+  //     console.log(box)
+  //   }
   // }, [tileURLsForSelectedTiles])
+
+  // useEffect(() => {
+  //   const box = BOXES[0][40]
+  //   const leafletTileURLs: [string, string, string, string] = [
+  //     "https://b.tile.openstreetmap.org/5/22/12.png",
+  //     "https://c.tile.openstreetmap.org/5/22/13.png",
+  //     "https://c.tile.openstreetmap.org/5/23/12.png",
+  //     "https://a.tile.openstreetmap.org/5/23/13.png"
+  //   ]
+
+  //   if (selectedLog) {
+  //     getProcessedImageOverlayTile({
+  //       box,
+  //       leafletTileURLs,
+  //       log: selectedLog,
+  //       mode,
+  //       opacity,
+  //     })
+  //   }
+  // }, [selectedLog, mode, opacity])
+
+  // useEffect(() => {
+  //   if (selectedTiles.size > 0) console.log(getAnimationDimensions(selectedTiles))
+  // }, [selectedTiles])
+
+  const x = () => {
+    if (selectedLog) getFrame({
+      log: selectedLog,
+      mode,
+      opacity,
+      selectedTiles,
+      tileURLsForSelectedTiles,
+    })
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "l" || e.key === "L") {
+        x();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [x]);
   
   // Return:
   return (

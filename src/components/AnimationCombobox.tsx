@@ -28,6 +28,7 @@ import {
 
 // Constants:
 import { ANIMATION_SPEEDS } from '@/context/AnimationContext'
+import { BOX_COUNT } from '@/lib/box'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -372,6 +373,8 @@ const TimelapseRecordingControls = ({
       className='absolute z-0 flex flex-col space-y-1 w-full px-2 py-3 bg-card border rounded-md transition-all'
       style={{
         top: showTimelapseRecordingControls ? 172 + 4 : 172 - height,
+        opacity: showTimelapseRecordingControls ? 1 : 0,
+        pointerEvents: showTimelapseRecordingControls ? 'all' : 'none',
       }}
     >
       <Button
@@ -392,12 +395,12 @@ const TimelapseRecordingControls = ({
         Start Recording
       </Button>
       <span className='mb-0 mt-2 text-lg font-semibold'>Record A Timelapse</span>
-      <span className='mb-2 text-sm text-zinc-700'>Follow these steps to record and download a timelapse:</span>
+      <span className='mb-2 text-sm text-zinc-700'>Follow the steps below to record and download a weather timelapse:</span>
       <span className='ml-1 text-sm'>1. Select the grids on the map that you wish to record.</span>
       <span className='ml-1 text-sm'>
-        2. Start recording! The process will take around {numberOfSelectedTiles > 0 ?
-          '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * averageLogDownloadSpeed, { compact: true })
-          : 'a few'}.
+        2. Start recording - this process will take {(numberOfSelectedTiles > 0 && averageLogDownloadSpeed > 0) ?
+          '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * (averageLogDownloadSpeed / BOX_COUNT), { compact: true })
+          : 'a few seconds'}.
       </span>
     </div>
   )
@@ -538,7 +541,15 @@ const AnimationCombobox = ({
                 if (!showTimelapseRecordingControls) setAnimationPopoverOpen(open)
               }}
             >
-              <PopoverTrigger asChild>
+              <PopoverTrigger 
+                asChild
+                onClick={() => {
+                  if (animationPopoverOpen && showTimelapseRecordingControls) {
+                    setShowTimelapseRecordingControls(false)
+                    setAnimationPopoverOpen(false)
+                  }
+                }}
+              >
                 <Button variant='outline' disabled={reversedLogs.length === 0} className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
                   <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : isLongPressing ? 'bg-blue-500' : 'bg-rose-400')} />
                   Timelapse
