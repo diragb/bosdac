@@ -4,6 +4,8 @@ import React, { useContext, useEffect } from 'react'
 import localforage from 'localforage'
 
 // Components:
+import Head from 'next/head'
+import AnimationOverlay from '@/components/AnimationOverlay'
 import Footer from '@/components/Footer'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import MOSDACDownDialog from '@/components/MOSDACDownDialog'
@@ -14,9 +16,9 @@ import MobileSidePanel from '@/components/MobileSidePanel'
 import UtilitiesContext from '@/context/UtilitiesContext'
 
 // Functions:
-const Leaflet = () => {
+const BOSDAC = () => {
   // Constants:
-  const { useSmallView } = useContext(UtilitiesContext)
+  const { useSmallView } = useContext(UtilitiesContext)  
   
   // Effects:
   useEffect(() => {
@@ -30,10 +32,12 @@ const Leaflet = () => {
   // Return:
   return (
     <>
+      <Head>
+        <title>BOSDAC - Better MOSDAC</title>
+      </Head>
       <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
-        {
-          useSmallView ? <MobileSidePanel /> : <SidePanel />
-        }
+        <AnimationOverlay />
+        { useSmallView ? <MobileSidePanel /> : <SidePanel /> }
         <LeafletMap />
         <Footer />
       </div>
@@ -43,4 +47,4 @@ const Leaflet = () => {
 }
 
 // Exports:
-export default Leaflet
+export default BOSDAC

@@ -1552,6 +1552,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash@npm:^4":
+  version: 4.17.20
+  resolution: "@types/lodash@npm:4.17.20"
+  checksum: 10c0/98cdd0faae22cbb8079a01a3bb65aa8f8c41143367486c1cbf5adc83f16c9272a2a5d2c1f541f61d0d73da543c16ee1d21cf2ef86cb93cd0cc0ac3bced6dd88f
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^20":
   version: 20.19.17
   resolution: "@types/node@npm:20.19.17"
@@ -2157,6 +2164,7 @@ __metadata:
     "@tailwindcss/postcss": "npm:^4"
     "@types/leaflet": "npm:^1.9.20"
     "@types/leaflet.heat": "npm:^0.2.5"
+    "@types/lodash": "npm:^4"
     "@types/node": "npm:^20"
     "@types/react": "npm:^19"
     "@types/react-dom": "npm:^19"
@@ -2172,6 +2180,7 @@ __metadata:
     leaflet-velocity: "npm:^2.1.4"
     leaflet.heat: "npm:^0.2.0"
     localforage: "npm:^1.10.0"
+    lodash: "npm:^4.17.21"
     lucide-react: "npm:^0.544.0"
     next: "npm:15.5.4"
     next-themes: "npm:^0.4.6"
@@ -3894,6 +3903,13 @@ __metadata:
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
   checksum: 10c0/402fa16a1edd7538de5b5903a90228aa48eb5533986ba7fa26606a49db2572bf414ff73a2c9f5d5fd36b31c46a5d5c7e1527749c07cbcf965ccff5fbdf32c506
+  languageName: node
+  linkType: hard
+
+"lodash@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+  checksum: 10c0/d8cbea072bb08655bb4c989da418994b073a608dffa608b09ac04b43a791b12aeae7cd7ad919aa4c925f33b48490b5cfe6c1f71d827956071dae2e7bb3a6b74c
   languageName: node
   linkType: hard
 

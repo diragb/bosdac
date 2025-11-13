@@ -1,6 +1,8 @@
 // Packages:
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import sleep from 'sleep-promise'
+import getTileURLsForBox from '@/lib/getTileURLsForBox'
+import { getAnimation } from '@/lib/animation'
 
 // Typescript:
 interface IAnimationContext {
@@ -14,10 +16,21 @@ interface IAnimationContext {
   isLongPressing: 'forward' | 'backward' | null
   repeat: boolean
   setRepeat: React.Dispatch<React.SetStateAction<boolean>>
+  showTimelapseRecordingControls: boolean
+  setShowTimelapseRecordingControls: React.Dispatch<React.SetStateAction<boolean>>
+  selectedTiles: Set<string>
+  setSelectedTiles: React.Dispatch<React.SetStateAction<Set<string>>>
+  isSelectingTilesToRecord: boolean
+  setIsSelectingTilesToRecord: React.Dispatch<React.SetStateAction<boolean>>
+  animationPopoverOpen: boolean
+  setAnimationPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>
+  isRecording: boolean
+  startRecording: () => Promise<void>
   repeatRef: React.RefObject<boolean>
   play: () => Promise<void>
   pause: () => void
   stop: () => void
+  recordingStatus: string
 }
 
 // Constants:
@@ -50,25 +63,36 @@ export const ANIMATION_SPEEDS = [
     value: 1000,
   },
 ]
-
 const LONG_PRESS_DELAY = 500
-
 const AnimationContext = createContext<IAnimationContext>({
   isAnimationOn: false,
   setIsAnimationOn: () => {},
   selectedAnimationSpeed: ANIMATION_SPEEDS[0],
   setSelectedAnimationSpeed: () => {},
   numberOfFrames: 0,
-  startLongPress: async (_direction, _selectedReversedLogIndex) => {},
+  startLongPress: async () => {},
   stopLongPress: () => {},
   isLongPressing: null,
   repeat: false,
   setRepeat: () => {},
+  showTimelapseRecordingControls: false,
+  setShowTimelapseRecordingControls: () => {},
+  selectedTiles: new Set(),
+  setSelectedTiles: () => {},
+  isSelectingTilesToRecord: false,
+  setIsSelectingTilesToRecord: () => {},
+  animationPopoverOpen: false,
+  setAnimationPopoverOpen: () => {},
+  isRecording: false,
+  startRecording: async () => {},
   repeatRef: { current: false },
   play: async () => {},
   pause: () => {},
   stop: () => {},
+  recordingStatus: 'Fetching tiles',
 })
+
+import { BOXES } from '@/lib/box'
 
 // Context:
 import GlobalAnimationContext from './GlobalAnimationContext'
@@ -84,6 +108,8 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     selectedLogIndex,
     onLogSelect,
     logDownloadStatus,
+    selectedLog,
+    opacity,
     mode,
   } = useContext(MapContext)
 
@@ -91,11 +117,17 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
   const [isAnimationOn, setIsAnimationOn] = useState(false)
   const [selectedAnimationSpeed, setSelectedAnimationSpeed] = useState<typeof ANIMATION_SPEEDS[number]>(ANIMATION_SPEEDS[0])
   const [isLongPressing, setIsLongPressing] = useState<'forward' | 'backward' | null>(null)
-  const [repeat, setRepeat] = useState(false)
+  const [repeat, setRepeat] = useState(true)
+  const [showTimelapseRecordingControls, setShowTimelapseRecordingControls] = useState(false)
+  const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set())
+  const [isSelectingTilesToRecord, setIsSelectingTilesToRecord] = useState(false)
+  const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingStatus, setRecordingStatus] = useState('Fetching tiles')
 
   // Ref:
   const isLongPressingRef = useRef<'forward' | 'backward' | null>(null)
-  const repeatRef = useRef(false)
+  const repeatRef = useRef(true)
   const animationRangeIndicesRef = useRef(animationRangeIndices)
   const isAnimationOnRef = useRef(isAnimationOn)
 
@@ -112,6 +144,23 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
 
     return totalUnloadedFrames
   }, [reversedLogs, animationRangeIndices, logDownloadStatus, mode])
+
+  const tileURLsForSelectedTiles = useMemo(() => {
+    const tileURLs = new Map<string, [string, string, string, string]>()
+    const indicesGroups: [string, number, number][] = []
+    selectedTiles.forEach(selectedTile => {
+      const indexGroup = selectedTile.split('-')
+      const index = parseInt(indexGroup[0]), jindex = parseInt(indexGroup[1])
+      indicesGroups.push([selectedTile, index, jindex])
+    })
+
+    for (const indexGroup of indicesGroups) {
+      const box = BOXES[indexGroup[1]][indexGroup[2]]
+      tileURLs.set(indexGroup[0], getTileURLsForBox({ z: 5, box }))
+    }
+
+    return tileURLs
+  }, [selectedTiles])
 
   // Functions:
   const moveOneFrameBackward = (_selectedReversedLogIndex: number, allowRepeat?: boolean) => {
@@ -215,6 +264,32 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     onLogSelect(reversedLogs[animationRangeIndices[1]], reversedLogs.length - 1 - animationRangeIndices[1])
   }
 
+  const startRecording = async () => {
+    if (selectedLog) {
+      setIsRecording(true)
+      const generatedAnimation = await getAnimation({
+        reversedLogs,
+        animationRangeIndices,
+        mode,
+        opacity,
+        selectedTiles,
+        tileURLsForSelectedTiles,
+        selectedAnimationSpeed,
+        setAnimationStatus: setRecordingStatus,
+      })
+      setIsRecording(false)
+
+      const url = URL.createObjectURL(generatedAnimation)
+      const a = document.createElement('a')
+      a.href = url
+      a.download =`BOSDAC-${animationRangeIndices[1] - animationRangeIndices[0] + 1}F-${selectedTiles.size}T-${selectedAnimationSpeed.id}.webm`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
   // Effects:
   useEffect(() => {
     animationRangeIndicesRef.current = animationRangeIndices
@@ -244,16 +319,33 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         isLongPressing,
         repeat,
         setRepeat,
+        showTimelapseRecordingControls,
+        setShowTimelapseRecordingControls,
+        selectedTiles,
+        setSelectedTiles,
+        isSelectingTilesToRecord,
+        setIsSelectingTilesToRecord,
+        animationPopoverOpen,
+        setAnimationPopoverOpen,
+        isRecording,
+        startRecording,
         repeatRef,
         play,
         pause,
         stop,
+        recordingStatus,
       }), [
         isAnimationOn,
         selectedAnimationSpeed,
         numberOfFrames,
         isLongPressing,
         repeat,
+        showTimelapseRecordingControls,
+        selectedTiles,
+        isSelectingTilesToRecord,
+        animationPopoverOpen,
+        isRecording,
+        recordingStatus,
       ])}
     >
       {children}

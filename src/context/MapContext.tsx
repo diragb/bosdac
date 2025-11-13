@@ -1,15 +1,15 @@
 // Packages:
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import useLogs from '@/hooks/useLogs'
 import localforage from 'localforage'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { getMOSDACImageURL } from '@/lib/map'
 
 // Typescript:
 import type { Layer } from '@/components/LayersCombobox'
 import type { MOSDACLog } from '@/pages/api/log'
 import { MOSDACImageMode } from '@/pages/api/history'
-import type { Box } from '@/lib/box'
 import { LogDownloadStatus } from '@/components/SidePanel'
 
 interface IMapContext {
@@ -37,6 +37,8 @@ interface IMapContext {
   setOpacity: React.Dispatch<React.SetStateAction<number>>
   onLogSelect: (log: MOSDACLog, logIndex: number) => Promise<void>
   onModeSelect: (newMode: MOSDACImageMode) => Promise<void>
+  zoom: number
+  setZoom: React.Dispatch<React.SetStateAction<number>>
 }
 
 // Assets:
@@ -45,6 +47,7 @@ import { FrownIcon } from 'lucide-react'
 // Constants:
 import { BOXES } from '@/lib/box'
 
+const ZOOM = 5
 const MapContext = createContext<IMapContext>({
   isHistoryOn: false,
   setIsHistoryOn: () => {},
@@ -68,8 +71,10 @@ const MapContext = createContext<IMapContext>({
   setMode: () => {},
   opacity: 0.85,
   setOpacity: () => {},
-  onLogSelect: async (_log: MOSDACLog, _logIndex: number) => {},
-  onModeSelect: async (_newMode: MOSDACImageMode) => {},
+  onLogSelect: async () => {},
+  onModeSelect: async () => {},
+  zoom: ZOOM,
+  setZoom: () => {},
 })
 
 // Context:
@@ -104,15 +109,12 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
   const [modeFetchingStatus, setModeFetchingStatus] = useState<Map<MOSDACImageMode, number | boolean>>(new Map())
   const [mode, setMode] = useState<MOSDACImageMode>(MOSDACImageMode.GREYSCALE)
   const [opacity, setOpacity] = useState(0.85)
+  const [zoom, setZoom] = useState(ZOOM)
 
   // Memo:
   const reversedLogs = useMemo(() => [...logs].reverse(), [logs])
 
   // Functions:
-  const getMOSDACImageURL = useCallback((box: Box, log: MOSDACLog, mode: MOSDACImageMode) => {
-    return `/api/history?bbox=${box.bbox}&date=${log.when.date}&month=${log.when.month}&year=${log.when.year}&formattedTimestamp=${log.when.formatted}&mode=${mode}`
-  }, [])
-
   const fetchMOSDACImages = async (log: MOSDACLog, mode: MOSDACImageMode, forProperty: 'log' | 'mode' = 'log'): Promise<number | null> => {
     try {
       let fetchedImageCount = 0
@@ -334,7 +336,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
     if (logs !== undefined && !areLogsLoading && !didLogsFetchThrowError && selectedLog === null) {
       setSelectedLog(logs[0])
       setSelectedLogIndex(logs.length - 1)
-      setAnimationRangeIndices([logs.length - 1 - 10, logs.length - 1])
+      setAnimationRangeIndices([logs.length - 10, logs.length - 1])
       onLogSelect(logs[0], 0)
     } else if ((logs === undefined || logs.length === 0) && !areLogsLoading && didLogsFetchThrowError && selectedLog === null) {
       console.error(`Upstream is fucked`, didLogsFetchThrowError)
@@ -370,6 +372,8 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
         setOpacity,
         onLogSelect,
         onModeSelect,
+        zoom,
+        setZoom,
       }}
     >
       {children}

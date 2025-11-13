@@ -1,5 +1,5 @@
 // Packages:
-import React, { useState, useCallback, useContext } from 'react'
+import React, { useState, useCallback, useContext, useRef, useEffect, useMemo } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import prettyMilliseconds from 'pretty-ms'
@@ -7,6 +7,7 @@ import prettyMilliseconds from 'pretty-ms'
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
 import { LogDownloadStatus } from '@/components/SidePanel'
+import type { MOSDACImageMode } from '@/pages/api/history'
 
 // Assets:
 import {
@@ -14,6 +15,8 @@ import {
   ChevronDownIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
+  CircleIcon,
+  Grid2x2CheckIcon,
   PauseIcon,
   PlayIcon,
   RepeatIcon,
@@ -21,10 +24,12 @@ import {
   TimerIcon,
   TriangleAlertIcon,
   TriangleIcon,
+  VideoIcon,
 } from 'lucide-react'
 
 // Constants:
 import { ANIMATION_SPEEDS } from '@/context/AnimationContext'
+import { BOX_COUNT } from '@/lib/box'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -62,7 +67,6 @@ import UtilitiesContext from '@/context/UtilitiesContext'
 import GlobalAnimationContext from '@/context/GlobalAnimationContext'
 import MapContext from '@/context/MapContext'
 import AnimationContext from '@/context/AnimationContext'
-import { MOSDACImageMode } from '@/pages/api/history'
 
 // Functions:
 const AnimationContent = ({
@@ -76,6 +80,8 @@ const AnimationContent = ({
   setAnimationRangeIndices,
   formatGMTToLocal12Hours,
   repeat,
+  showTimelapseRecordingControls,
+  setShowTimelapseRecordingControls,
   isAnimationOn,
   startLongPress,
   stopLongPress,
@@ -89,6 +95,7 @@ const AnimationContent = ({
   setSelectedAnimationSpeed,
   averageLogDownloadSpeed,
   numberOfFrames,
+  isLoadingManyFrames,
 }: {
   mode: MOSDACImageMode
   reversedLogs: MOSDACLogData
@@ -101,7 +108,9 @@ const AnimationContent = ({
   formatGMTToLocal12Hours: (time: string) => string
   repeat: boolean
   setRepeat: React.Dispatch<React.SetStateAction<boolean>>
-  repeatRef: React.MutableRefObject<boolean>
+  showTimelapseRecordingControls: boolean
+  setShowTimelapseRecordingControls: React.Dispatch<React.SetStateAction<boolean>>
+  repeatRef: React.RefObject<boolean>
   isAnimationOn: boolean
   startLongPress: (direction: 'forward' | 'backward', _selectedLogIndex: number) => Promise<void>
   stopLongPress: () => void
@@ -113,8 +122,9 @@ const AnimationContent = ({
   setSelectedAnimationSpeed: React.Dispatch<React.SetStateAction<typeof ANIMATION_SPEEDS[number]>>
   averageLogDownloadSpeed: number
   numberOfFrames: number
+  isLoadingManyFrames: boolean
 }) => (
-  <div className='flex flex-col gap-2.5 w-full'>
+  <div className='relative z-[1] flex flex-col gap-2.5 w-full px-2 py-3 bg-card border rounded-md'>
     {
       reversedLogs.length > 0 && (
         <>
@@ -287,8 +297,27 @@ const AnimationContent = ({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+
+    <div className='flex items-start justify-start gap-2 w-full'>
+      <Button
+        variant='outline'
+        className='cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
+        onClick={() => {
+          setShowTimelapseRecordingControls(_showTimelapseRecordingControls => !_showTimelapseRecordingControls)
+        }}
+      >
+        <VideoIcon
+          className={cn(
+            'size-3.5 text-zinc-800 fill-black transition-all',
+            showTimelapseRecordingControls && 'text-rose-700 fill-rose-600',
+          )}
+        />
+        Record Timelapse
+      </Button>
+    </div>
+
     {
-      (averageLogDownloadSpeed === 0 ? numberOfFrames > 10 : (numberOfFrames * averageLogDownloadSpeed > 2 * MINUTE)) && (
+      isLoadingManyFrames && (
         <div className='flex items-start justify-start gap-2 w-full p-2 bg-orange-200 border-[1px] border-orange-300 rounded-sm'>
           <TriangleAlertIcon className='size-4' />
           <span className='text-xs'>You&apos;re about to load in {numberOfFrames} frames.{' '}
@@ -309,6 +338,92 @@ const AnimationContent = ({
   </div>
 )
 
+const TimelapseRecordingControls = ({
+  showTimelapseRecordingControls,
+  startSelectingTilesToRecord,
+  isRecording,
+  startRecording,
+  numberOfSelectedTiles,
+  numberOfFrames,
+  averageLogDownloadSpeed,
+  isLoadingManyFrames,
+  useSmallView,
+}: {
+  showTimelapseRecordingControls: boolean
+  startSelectingTilesToRecord: () => void
+  isRecording: boolean
+  startRecording: () => Promise<void>
+  numberOfSelectedTiles: number
+  numberOfFrames: number
+  averageLogDownloadSpeed: number
+  isLoadingManyFrames: boolean
+  useSmallView: boolean
+}) => {
+  // Constants:
+  const DEFAULT_WRAPPER_HEIGHT = 50
+
+  // Ref:
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // State:
+  const [height, setHeight] = useState(DEFAULT_WRAPPER_HEIGHT)
+
+  // Effects:
+  useEffect(() => {
+    setHeight(wrapperRef.current?.getBoundingClientRect().height ?? DEFAULT_WRAPPER_HEIGHT)
+  }, [])
+  
+  // Return:
+  return (
+    <div
+      ref={wrapperRef}
+      className='absolute z-0 flex flex-col space-y-1 w-full px-2 py-3 bg-card border rounded-md transition-all'
+      style={{
+        top: showTimelapseRecordingControls ? 172 + 4 + (isLoadingManyFrames ? 34 + 10 : 0) + (useSmallView ? isLoadingManyFrames ? 16 : 0 : 0) : 172 - height,
+        opacity: showTimelapseRecordingControls ? 1 : 0,
+        pointerEvents: showTimelapseRecordingControls ? 'all' : 'none',
+      }}
+    >
+      <span className={cn('mb-0 font-semibold', useSmallView ? 'text-base' : 'text-lg')}>Record A Timelapse</span>
+      <span className={cn('mb-2 text-zinc-700', useSmallView ? 'text-xs' : 'text-sm')}>Follow the steps below to record and download a weather timelapse:</span>
+      <span className={cn('ml-1', useSmallView ? 'text-xs' : 'text-sm')}>1. Select the tiles on the map that you wish to record.</span>
+      <span className={cn('ml-1 mb-2', useSmallView ? 'text-xs' : 'text-sm')}>
+        2. Start recording - this process will take {(numberOfSelectedTiles > 0 && averageLogDownloadSpeed > 0) ?
+          '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * (averageLogDownloadSpeed / BOX_COUNT), { compact: true })
+          : 'a few seconds'}.
+      </span>
+      <div className='flex items-center gap-1.5'>
+        <Button
+          size='sm'
+          variant='outline'
+          className='w-fit text-xs cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
+          onClick={startSelectingTilesToRecord}
+        >
+          <Grid2x2CheckIcon className='size-2 text-zinc-800' />
+          Select Tiles
+        </Button>
+        <Button
+          size={useSmallView ? 'sm' : 'default'}
+          variant='outline'
+          className={cn('w-fit cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300', useSmallView && 'text-xs')}
+          disabled={numberOfSelectedTiles === 0}
+          onClick={startRecording}
+        >
+          <CircleIcon
+            className={cn(
+              'text-zinc-800 fill-black transition-all',
+              useSmallView ? 'size-2' : 'size-3.5',
+              isRecording && 'text-rose-700 fill-rose-600',
+            )}
+          />
+
+          Start Recording
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 const AnimationCombobox = ({
   selectedReversedLogIndex,
 }: {
@@ -318,6 +433,7 @@ const AnimationCombobox = ({
   const {
     useSmallView,
     toggleSmallViewDialog,
+    setIsSidePanelPopoverOpen
   } = useContext(UtilitiesContext)
   const {
     animationRangeIndices,
@@ -336,6 +452,14 @@ const AnimationCombobox = ({
     setIsAnimationOn,
     repeat,
     setRepeat,
+    selectedTiles,
+    showTimelapseRecordingControls,
+    setShowTimelapseRecordingControls,
+    setIsSelectingTilesToRecord,
+    animationPopoverOpen,
+    setAnimationPopoverOpen,
+    isRecording,
+    startRecording,
     repeatRef,
     startLongPress,
     stopLongPress,
@@ -347,8 +471,11 @@ const AnimationCombobox = ({
     numberOfFrames,
   } = useContext(AnimationContext)
 
-  // State:
-  const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
+  // Memo:
+  const isLoadingManyFrames = useMemo(() => (
+    !isRecording &&
+    (averageLogDownloadSpeed === 0 ? numberOfFrames > 10 : (numberOfFrames * averageLogDownloadSpeed > 2 * MINUTE))
+  ), [isRecording, averageLogDownloadSpeed, numberOfFrames])
 
   // Functions:
   const formatGMTToLocal12Hours = useCallback((time: string) => {
@@ -387,16 +514,17 @@ const AnimationCombobox = ({
               } else {
                 setAnimationPopoverOpen(_open)
                 await toggleSmallViewDialog(_open)
+                setShowTimelapseRecordingControls(_open)
               }
             }}
           >
             <DialogTrigger asChild>
               <Button variant='outline' disabled={reversedLogs.length === 0} className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
                 <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : isLongPressing ? 'bg-blue-500' : 'bg-rose-400')} />
-                Animation
+                Timelapse
               </Button>
             </DialogTrigger>
-            <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] p-2', `${geistSans.className} font-sans`)}>
+            <DialogContent hideOverlay showCloseButton={false} className={cn('z-[1001] !p-0 !bg-transparent !border-none', `${geistSans.className} font-sans`)}>
               <VisuallyHidden>
                 <DialogTitle>Layers</DialogTitle>
                 <DialogDescription>Select a layer from the list below</DialogDescription>
@@ -413,6 +541,8 @@ const AnimationCombobox = ({
                 formatGMTToLocal12Hours={formatGMTToLocal12Hours}
                 repeat={repeat}
                 setRepeat={setRepeat}
+                showTimelapseRecordingControls={showTimelapseRecordingControls}
+                setShowTimelapseRecordingControls={setShowTimelapseRecordingControls}
                 repeatRef={repeatRef}
                 isAnimationOn={isAnimationOn}
                 startLongPress={startLongPress}
@@ -425,45 +555,101 @@ const AnimationCombobox = ({
                 setSelectedAnimationSpeed={setSelectedAnimationSpeed}
                 averageLogDownloadSpeed={averageLogDownloadSpeed}
                 numberOfFrames={numberOfFrames}
+                isLoadingManyFrames={isLoadingManyFrames}
+              />
+              <TimelapseRecordingControls
+                showTimelapseRecordingControls={showTimelapseRecordingControls}
+                isRecording={isRecording}
+                startRecording={startRecording}
+                numberOfSelectedTiles={selectedTiles.size}
+                averageLogDownloadSpeed={averageLogDownloadSpeed}
+                numberOfFrames={numberOfFrames}
+                isLoadingManyFrames={isLoadingManyFrames}
+                useSmallView={useSmallView}
+                startSelectingTilesToRecord={async () => {
+                  setIsSelectingTilesToRecord(true)
+                  setAnimationPopoverOpen(false)
+                  await toggleSmallViewDialog(false)
+                  setIsSidePanelPopoverOpen(false)
+                }}
               />
             </DialogContent>
           </Dialog>
         ) : (
-          <Popover open={animationPopoverOpen} onOpenChange={setAnimationPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant='outline' disabled={reversedLogs.length === 0} className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
-                <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : isLongPressing ? 'bg-blue-500' : 'bg-rose-400')} />
-                Animation
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className={cn('z-[1001] w-[600px] px-2 py-3 bg-card', `${geistSans.className} font-sans`)} align='start' side='left' sideOffset={16}>
-              <AnimationContent
-                mode={mode}
-                reversedLogs={reversedLogs}
-                selectedReversedLogIndex={selectedReversedLogIndex}
-                onLogSelect={onLogSelect}
-                logDownloadStatus={logDownloadStatus}
-                animationRangeIndices={animationRangeIndices}
-                setIsAnimationOn={setIsAnimationOn}
-                setAnimationRangeIndices={setAnimationRangeIndices}
-                formatGMTToLocal12Hours={formatGMTToLocal12Hours}
-                repeat={repeat}
-                setRepeat={setRepeat}
-                repeatRef={repeatRef}
-                isAnimationOn={isAnimationOn}
-                startLongPress={startLongPress}
-                stopLongPress={stopLongPress}
-                isLongPressing={isLongPressing}
-                pause={pause}
-                play={play}
-                stop={stop}
-                selectedAnimationSpeed={selectedAnimationSpeed}
-                setSelectedAnimationSpeed={setSelectedAnimationSpeed}
-                averageLogDownloadSpeed={averageLogDownloadSpeed}
-                numberOfFrames={numberOfFrames}
-              />
-            </PopoverContent>
-          </Popover>
+          <>
+            <Popover
+              open={animationPopoverOpen}
+              onOpenChange={open => {
+                if (!showTimelapseRecordingControls) setAnimationPopoverOpen(open)
+              }}
+            >
+              <PopoverTrigger 
+                asChild
+                onClick={() => {
+                  if (animationPopoverOpen && showTimelapseRecordingControls) {
+                    setShowTimelapseRecordingControls(false)
+                    setAnimationPopoverOpen(false)
+                  }
+                }}
+              >
+                <Button variant='outline' disabled={reversedLogs.length === 0} className={cn('relative w-full cursor-pointer', animationPopoverOpen && '!bg-zinc-200')}>
+                  <div className={cn('absolute top-1.5 right-1.5 z-10 w-1.5 h-1.5 rounded-full transition-all', isAnimationOn ? 'bg-green-500' : isLongPressing ? 'bg-blue-500' : 'bg-rose-400')} />
+                  Timelapse
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className={cn('z-[1001] w-[600px] !p-0 !bg-transparent !border-none', `${geistSans.className} font-sans`)}
+                align='start'
+                side='left'
+                sideOffset={16}
+              >
+                <AnimationContent
+                  mode={mode}
+                  reversedLogs={reversedLogs}
+                  selectedReversedLogIndex={selectedReversedLogIndex}
+                  onLogSelect={onLogSelect}
+                  logDownloadStatus={logDownloadStatus}
+                  animationRangeIndices={animationRangeIndices}
+                  setIsAnimationOn={setIsAnimationOn}
+                  setAnimationRangeIndices={setAnimationRangeIndices}
+                  formatGMTToLocal12Hours={formatGMTToLocal12Hours}
+                  repeat={repeat}
+                  setRepeat={setRepeat}
+                  showTimelapseRecordingControls={showTimelapseRecordingControls}
+                  setShowTimelapseRecordingControls={setShowTimelapseRecordingControls}
+                  repeatRef={repeatRef}
+                  isAnimationOn={isAnimationOn}
+                  startLongPress={startLongPress}
+                  stopLongPress={stopLongPress}
+                  isLongPressing={isLongPressing}
+                  pause={pause}
+                  play={play}
+                  stop={stop}
+                  selectedAnimationSpeed={selectedAnimationSpeed}
+                  setSelectedAnimationSpeed={setSelectedAnimationSpeed}
+                  averageLogDownloadSpeed={averageLogDownloadSpeed}
+                  numberOfFrames={numberOfFrames}
+                  isLoadingManyFrames={isLoadingManyFrames}
+                />
+                <TimelapseRecordingControls
+                  showTimelapseRecordingControls={showTimelapseRecordingControls}
+                  isRecording={isRecording}
+                  startRecording={startRecording}
+                  numberOfSelectedTiles={selectedTiles.size}
+                  averageLogDownloadSpeed={averageLogDownloadSpeed}
+                  numberOfFrames={numberOfFrames}
+                  isLoadingManyFrames={isLoadingManyFrames}
+                  useSmallView={useSmallView}
+                  startSelectingTilesToRecord={async () => {
+                    setIsSelectingTilesToRecord(true)
+                    setAnimationPopoverOpen(false)
+                    await toggleSmallViewDialog(false)
+                    setIsSidePanelPopoverOpen(false)
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </>
         )
       }
     </>

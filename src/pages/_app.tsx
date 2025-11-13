@@ -19,6 +19,7 @@ const geistSans = Geist({
 import { Toaster } from '@/components/ui/sonner'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import AnimationFrameGenerator from '@/components/AnimationFrameGenerator'
 
 // Context:
 import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
@@ -42,6 +43,7 @@ const App = ({ Component, pageProps }: AppProps) => (
           <MapContextProvider>
             <AnimationContextProvider>
               <LayersContextProvider>
+                <AnimationFrameGenerator />
                 <Component {...pageProps} />
               </LayersContextProvider>
             </AnimationContextProvider>
