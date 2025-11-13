@@ -393,15 +393,19 @@ const TimelapseRecordingControls = ({
           : 'a few seconds'}.
       </span>
       <div className='flex items-center gap-1.5'>
-        <Button
-          size='sm'
-          variant='outline'
-          className='w-fit text-xs cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
-          onClick={startSelectingTilesToRecord}
-        >
-          <Grid2x2CheckIcon className='size-2 text-zinc-800' />
-          Select Tiles
-        </Button>
+        {
+          useSmallView && (
+            <Button
+              size='sm'
+              variant='outline'
+              className='w-fit text-xs cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
+              onClick={startSelectingTilesToRecord}
+            >
+              <Grid2x2CheckIcon className='size-2 text-zinc-800' />
+              Select Tiles
+            </Button>
+          )
+        }
         <Button
           size={useSmallView ? 'sm' : 'default'}
           variant='outline'
