@@ -337,7 +337,7 @@ export const MapContextProvider = ({ children }: { children: React.ReactNode }) 
     if (logs !== undefined && !areLogsLoading && !didLogsFetchThrowError && selectedLog === null) {
       setSelectedLog(logs[0])
       setSelectedLogIndex(logs.length - 1)
-      setAnimationRangeIndices([logs.length - 1 - 10, logs.length - 1])
+      setAnimationRangeIndices([logs.length - 10, logs.length - 1])
       onLogSelect(logs[0], 0)
     } else if ((logs === undefined || logs.length === 0) && !areLogsLoading && didLogsFetchThrowError && selectedLog === null) {
       console.error(`Upstream is fucked`, didLogsFetchThrowError)

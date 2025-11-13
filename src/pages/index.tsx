@@ -4,6 +4,7 @@ import React, { useContext, useEffect } from 'react'
 import localforage from 'localforage'
 
 // Components:
+import Head from 'next/head'
 import Footer from '@/components/Footer'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import MOSDACDownDialog from '@/components/MOSDACDownDialog'
@@ -30,6 +31,9 @@ const BOSDAC = () => {
   // Return:
   return (
     <>
+      <Head>
+        <title>BOSDAC - Better MOSDAC</title>
+      </Head>
       <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
         {
           useSmallView ? <MobileSidePanel /> : <SidePanel />

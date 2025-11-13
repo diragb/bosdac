@@ -16,12 +16,10 @@ const Document = () => (
   <Html lang='en'>
     <Head>
       {/* Primary Meta Tags */}
-      <title>BOSDAC - Better MOSDAC</title>
       <meta name='title' content={appName} />
       <meta name='description' content={appDescription} />
       <meta name='application-name' content='BOSDAC' />
       <meta name='theme-color' content='#0f172a' />
-      <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
       <meta name='image' content={`${siteURL}/og-square.jpg`} />
 
       {/* Canonical */}

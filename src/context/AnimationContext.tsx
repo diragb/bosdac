@@ -1,6 +1,8 @@
 // Packages:
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import sleep from 'sleep-promise'
+import getTileURLsForBox from '@/lib/getTileURLsForBox'
+import { getAnimation } from '@/lib/animation'
 
 // Typescript:
 interface IAnimationContext {
@@ -82,12 +84,11 @@ const AnimationContext = createContext<IAnimationContext>({
   stop: () => {},
 })
 
+import { BOXES } from '@/lib/box'
+
 // Context:
 import GlobalAnimationContext from './GlobalAnimationContext'
 import MapContext from '@/context/MapContext'
-import { BOXES } from '@/lib/box'
-import getTileURLsForBox from '@/lib/getTileURLsForBox'
-import { getAnimationDimensions, getFrame, getProcessedImageOverlayTile } from '@/lib/animation'
 
 // Functions:
 export const AnimationContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -102,6 +103,7 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     selectedLog,
     opacity,
     mode,
+    logs,
     // zoom,
   } = useContext(MapContext)
 
@@ -300,15 +302,27 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
   //   if (selectedTiles.size > 0) console.log(getAnimationDimensions(selectedTiles))
   // }, [selectedTiles])
 
-  const x = () => {
-    if (selectedLog) getFrame({
-      log: selectedLog,
-      mode,
-      opacity,
-      selectedTiles,
-      tileURLsForSelectedTiles,
-    })
-  };
+  const x = async () => {
+    if (selectedLog) {
+      const video = await getAnimation({
+        reversedLogs,
+        animationRangeIndices,
+        mode,
+        opacity,
+        selectedTiles,
+        tileURLsForSelectedTiles,
+        selectedAnimationSpeed,
+      })
+      const url = URL.createObjectURL(video);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = 'slideshow.webm';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -319,7 +333,16 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [x]);
+  }, [
+    x,
+    reversedLogs,
+    animationRangeIndices,
+    mode,
+    opacity,
+    selectedTiles,
+    tileURLsForSelectedTiles,
+    selectedAnimationSpeed,
+  ]);
   
   // Return:
   return (
