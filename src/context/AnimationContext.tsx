@@ -20,6 +20,10 @@ interface IAnimationContext {
   setShowTimelapseRecordingControls: React.Dispatch<React.SetStateAction<boolean>>
   selectedTiles: Set<string>
   setSelectedTiles: React.Dispatch<React.SetStateAction<Set<string>>>
+  isSelectingTilesToRecord: boolean
+  setIsSelectingTilesToRecord: React.Dispatch<React.SetStateAction<boolean>>
+  animationPopoverOpen: boolean
+  setAnimationPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>
   isRecording: boolean
   startRecording: () => Promise<void>
   repeatRef: React.RefObject<boolean>
@@ -75,6 +79,10 @@ const AnimationContext = createContext<IAnimationContext>({
   setShowTimelapseRecordingControls: () => {},
   selectedTiles: new Set(),
   setSelectedTiles: () => {},
+  isSelectingTilesToRecord: false,
+  setIsSelectingTilesToRecord: () => {},
+  animationPopoverOpen: false,
+  setAnimationPopoverOpen: () => {},
   isRecording: false,
   startRecording: async () => {},
   repeatRef: { current: false },
@@ -112,6 +120,8 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
   const [repeat, setRepeat] = useState(true)
   const [showTimelapseRecordingControls, setShowTimelapseRecordingControls] = useState(false)
   const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set())
+  const [isSelectingTilesToRecord, setIsSelectingTilesToRecord] = useState(false)
+  const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState('Fetching tiles')
 
@@ -313,6 +323,10 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         setShowTimelapseRecordingControls,
         selectedTiles,
         setSelectedTiles,
+        isSelectingTilesToRecord,
+        setIsSelectingTilesToRecord,
+        animationPopoverOpen,
+        setAnimationPopoverOpen,
         isRecording,
         startRecording,
         repeatRef,
@@ -328,6 +342,8 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         repeat,
         showTimelapseRecordingControls,
         selectedTiles,
+        isSelectingTilesToRecord,
+        animationPopoverOpen,
         isRecording,
         recordingStatus,
       ])}

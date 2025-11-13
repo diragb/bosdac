@@ -16,6 +16,7 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   CircleIcon,
+  Grid2x2CheckIcon,
   PauseIcon,
   PlayIcon,
   RepeatIcon,
@@ -302,7 +303,7 @@ const AnimationContent = ({
         variant='outline'
         className='cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
         onClick={() => {
-          setShowTimelapseRecordingControls(_isSelectingTilesToRecord => !_isSelectingTilesToRecord)
+          setShowTimelapseRecordingControls(_showTimelapseRecordingControls => !_showTimelapseRecordingControls)
         }}
       >
         <VideoIcon
@@ -339,20 +340,24 @@ const AnimationContent = ({
 
 const TimelapseRecordingControls = ({
   showTimelapseRecordingControls,
+  startSelectingTilesToRecord,
   isRecording,
   startRecording,
   numberOfSelectedTiles,
   numberOfFrames,
   averageLogDownloadSpeed,
   isLoadingManyFrames,
+  useSmallView,
 }: {
   showTimelapseRecordingControls: boolean
+  startSelectingTilesToRecord: () => void
   isRecording: boolean
   startRecording: () => Promise<void>
   numberOfSelectedTiles: number
   numberOfFrames: number
   averageLogDownloadSpeed: number
   isLoadingManyFrames: boolean
+  useSmallView: boolean
 }) => {
   // Constants:
   const DEFAULT_WRAPPER_HEIGHT = 50
@@ -374,35 +379,47 @@ const TimelapseRecordingControls = ({
       ref={wrapperRef}
       className='absolute z-0 flex flex-col space-y-1 w-full px-2 py-3 bg-card border rounded-md transition-all'
       style={{
-        top: showTimelapseRecordingControls ? 172 + 4 + (isLoadingManyFrames ? 34 + 10 : 0) : 172 - height,
+        top: showTimelapseRecordingControls ? 172 + 4 + (isLoadingManyFrames ? 34 + 10 : 0) + (useSmallView ? isLoadingManyFrames ? 16 : 0 : 0) : 172 - height,
         opacity: showTimelapseRecordingControls ? 1 : 0,
         pointerEvents: showTimelapseRecordingControls ? 'all' : 'none',
       }}
     >
-      <span className='mb-0 text-lg font-semibold'>Record A Timelapse</span>
-      <span className='mb-2 text-sm text-zinc-700'>Follow the steps below to record and download a weather timelapse:</span>
-      <span className='ml-1 text-sm'>1. Select the grids on the map that you wish to record.</span>
-      <span className='ml-1 mb-2 text-sm'>
+      <span className={cn('mb-0 font-semibold', useSmallView ? 'text-base' : 'text-lg')}>Record A Timelapse</span>
+      <span className={cn('mb-2 text-zinc-700', useSmallView ? 'text-xs' : 'text-sm')}>Follow the steps below to record and download a weather timelapse:</span>
+      <span className={cn('ml-1', useSmallView ? 'text-xs' : 'text-sm')}>1. Select the tiles on the map that you wish to record.</span>
+      <span className={cn('ml-1 mb-2', useSmallView ? 'text-xs' : 'text-sm')}>
         2. Start recording - this process will take {(numberOfSelectedTiles > 0 && averageLogDownloadSpeed > 0) ?
           '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * (averageLogDownloadSpeed / BOX_COUNT), { compact: true })
           : 'a few seconds'}.
       </span>
-      <Button
-        size='default'
-        variant='outline'
-        className='w-fit cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
-        disabled={numberOfSelectedTiles === 0}
-        onClick={startRecording}
-      >
-        <CircleIcon
-          className={cn(
-            'size-3.5 text-zinc-800 fill-black transition-all',
-            isRecording && 'text-rose-700 fill-rose-600',
-          )}
-        />
+      <div className='flex items-center gap-1.5'>
+        <Button
+          size='sm'
+          variant='outline'
+          className='w-fit text-xs cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
+          onClick={startSelectingTilesToRecord}
+        >
+          <Grid2x2CheckIcon className='size-2 text-zinc-800' />
+          Select Tiles
+        </Button>
+        <Button
+          size={useSmallView ? 'sm' : 'default'}
+          variant='outline'
+          className={cn('w-fit cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300', useSmallView && 'text-xs')}
+          disabled={numberOfSelectedTiles === 0}
+          onClick={startRecording}
+        >
+          <CircleIcon
+            className={cn(
+              'text-zinc-800 fill-black transition-all',
+              useSmallView ? 'size-2' : 'size-3.5',
+              isRecording && 'text-rose-700 fill-rose-600',
+            )}
+          />
 
-        Start Recording
-      </Button>
+          Start Recording
+        </Button>
+      </div>
     </div>
   )
 }
@@ -416,6 +433,7 @@ const AnimationCombobox = ({
   const {
     useSmallView,
     toggleSmallViewDialog,
+    setIsSidePanelPopoverOpen
   } = useContext(UtilitiesContext)
   const {
     animationRangeIndices,
@@ -437,6 +455,9 @@ const AnimationCombobox = ({
     selectedTiles,
     showTimelapseRecordingControls,
     setShowTimelapseRecordingControls,
+    setIsSelectingTilesToRecord,
+    animationPopoverOpen,
+    setAnimationPopoverOpen,
     isRecording,
     startRecording,
     repeatRef,
@@ -449,9 +470,6 @@ const AnimationCombobox = ({
     setSelectedAnimationSpeed,
     numberOfFrames,
   } = useContext(AnimationContext)
-
-  // State:
-  const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
 
   // Memo:
   const isLoadingManyFrames = useMemo(() => (
@@ -496,6 +514,7 @@ const AnimationCombobox = ({
               } else {
                 setAnimationPopoverOpen(_open)
                 await toggleSmallViewDialog(_open)
+                setShowTimelapseRecordingControls(_open)
               }
             }}
           >
@@ -537,6 +556,22 @@ const AnimationCombobox = ({
                 averageLogDownloadSpeed={averageLogDownloadSpeed}
                 numberOfFrames={numberOfFrames}
                 isLoadingManyFrames={isLoadingManyFrames}
+              />
+              <TimelapseRecordingControls
+                showTimelapseRecordingControls={showTimelapseRecordingControls}
+                isRecording={isRecording}
+                startRecording={startRecording}
+                numberOfSelectedTiles={selectedTiles.size}
+                averageLogDownloadSpeed={averageLogDownloadSpeed}
+                numberOfFrames={numberOfFrames}
+                isLoadingManyFrames={isLoadingManyFrames}
+                useSmallView={useSmallView}
+                startSelectingTilesToRecord={async () => {
+                  setIsSelectingTilesToRecord(true)
+                  setAnimationPopoverOpen(false)
+                  await toggleSmallViewDialog(false)
+                  setIsSidePanelPopoverOpen(false)
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -604,6 +639,13 @@ const AnimationCombobox = ({
                   averageLogDownloadSpeed={averageLogDownloadSpeed}
                   numberOfFrames={numberOfFrames}
                   isLoadingManyFrames={isLoadingManyFrames}
+                  useSmallView={useSmallView}
+                  startSelectingTilesToRecord={async () => {
+                    setIsSelectingTilesToRecord(true)
+                    setAnimationPopoverOpen(false)
+                    await toggleSmallViewDialog(false)
+                    setIsSidePanelPopoverOpen(false)
+                  }}
                 />
               </PopoverContent>
             </Popover>
