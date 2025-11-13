@@ -264,6 +264,9 @@ export const getFrame = async ({
     })
   }
 
+  const renderOperations: { i: number; j: number; key: string }[] = []
+  const bitmapPromises = new Map<string, Promise<ImageBitmap | null>>()
+
   for (let x = dimensions.x, i = 0; x < dimensions.x + dimensions.length; x++, i++) {
     for (let y = dimensions.y, j = 0; y < dimensions.y + dimensions.breadth; y++, j++) {
       const selectedBox = selectedBoxes.find(_selectedBox => (
@@ -272,21 +275,51 @@ export const getFrame = async ({
       ))
       if (!selectedBox) continue
 
-      const leafletTileURLs: [string, string, string, string] | undefined = tileURLsForSelectedTiles.get(`${selectedBox.index}-${selectedBox.jindex}`)
+      const key = `${selectedBox.index}-${selectedBox.jindex}`
+      const leafletTileURLs: [string, string, string, string] | undefined = tileURLsForSelectedTiles.get(key)
       if (!leafletTileURLs) continue
 
-      const { status, payload } = await getProcessedImageOverlayTile({
-        box: selectedBox,
-        leafletTileURLs,
-        log,
-        mode,
-        opacity,
-      })
-      if (!status) continue
-      const processedOverlayObjectURL = URL.createObjectURL(payload)
-      const processedOverlay = await loadImage(processedOverlayObjectURL)
+      if (!bitmapPromises.has(key)) {
+        bitmapPromises.set(key, (async () => {
+          try {
+            const { status, payload } = await getProcessedImageOverlayTile({
+              box: selectedBox,
+              leafletTileURLs,
+              log,
+              mode,
+              opacity,
+            })
+            if (!status) return null
+            return await createImageBitmap(payload)
+          } catch (error) {
+            xonsole.error('getFrame:getProcessedImageOverlayTile', error as Error, { key, log, mode })
+            return null
+          }
+        })())
+      }
 
-      ctx.drawImage(processedOverlay, i * overlayImageSize, j * overlayImageSize, overlayImageSize, overlayImageSize)
+      renderOperations.push({ i, j, key })
+    }
+  }
+
+  if (renderOperations.length > 0) {
+    const resolvedBitmaps = new Map<string, ImageBitmap | null>(
+      await Promise.all(
+        Array.from(bitmapPromises.entries()).map(async ([key, promise]) => {
+          const bitmap = await promise
+          return [key, bitmap] as const
+        })
+      )
+    )
+
+    for (const { i, j, key } of renderOperations) {
+      const bitmap = resolvedBitmaps.get(key)
+      if (!bitmap) continue
+      ctx.drawImage(bitmap, i * overlayImageSize, j * overlayImageSize, overlayImageSize, overlayImageSize)
+    }
+
+    for (const bitmap of resolvedBitmaps.values()) {
+      if (bitmap) bitmap.close()
     }
   }
 
@@ -321,21 +354,15 @@ export const getAnimation = async ({
   selectedAnimationSpeed: typeof ANIMATION_SPEEDS[number]
 }) => {
   const logs = reversedLogs.slice(animationRangeIndices[0], animationRangeIndices[1] + 1)
-  const frames: {
-    frame: Blob
-    dimensions: AnimationDimensions
-  }[] = []
-
-  for await (const log of logs) {
-    const frame = await getFrame({
+  const frames = await Promise.all(
+    logs.map(log => getFrame({
       log,
       mode,
       opacity,
       selectedTiles,
       tileURLsForSelectedTiles,
-    })
-    frames.push(frame)
-  }
+    }))
+  )
 
   const unitOverlayImageSize = 512
   const width = frames[0].dimensions.length * unitOverlayImageSize
