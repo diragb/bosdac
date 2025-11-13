@@ -5,6 +5,7 @@ import localforage from 'localforage'
 
 // Components:
 import Head from 'next/head'
+import AnimationOverlay from '@/components/AnimationOverlay'
 import Footer from '@/components/Footer'
 const LeafletMap = dynamic(() => import('../components/LeafletMap'), { ssr: false })
 import MOSDACDownDialog from '@/components/MOSDACDownDialog'
@@ -17,7 +18,7 @@ import UtilitiesContext from '@/context/UtilitiesContext'
 // Functions:
 const BOSDAC = () => {
   // Constants:
-  const { useSmallView } = useContext(UtilitiesContext)
+  const { useSmallView } = useContext(UtilitiesContext)  
   
   // Effects:
   useEffect(() => {
@@ -35,9 +36,8 @@ const BOSDAC = () => {
         <title>BOSDAC - Better MOSDAC</title>
       </Head>
       <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
-        {
-          useSmallView ? <MobileSidePanel /> : <SidePanel />
-        }
+        <AnimationOverlay />
+        { useSmallView ? <MobileSidePanel /> : <SidePanel /> }
         <LeafletMap />
         <Footer />
       </div>

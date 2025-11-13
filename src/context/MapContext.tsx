@@ -10,7 +10,6 @@ import { getMOSDACImageURL } from '@/lib/map'
 import type { Layer } from '@/components/LayersCombobox'
 import type { MOSDACLog } from '@/pages/api/log'
 import { MOSDACImageMode } from '@/pages/api/history'
-import type { Box } from '@/lib/box'
 import { LogDownloadStatus } from '@/components/SidePanel'
 
 interface IMapContext {
@@ -72,8 +71,8 @@ const MapContext = createContext<IMapContext>({
   setMode: () => {},
   opacity: 0.85,
   setOpacity: () => {},
-  onLogSelect: async (_log: MOSDACLog, _logIndex: number) => {},
-  onModeSelect: async (_newMode: MOSDACImageMode) => {},
+  onLogSelect: async () => {},
+  onModeSelect: async () => {},
   zoom: ZOOM,
   setZoom: () => {},
 })

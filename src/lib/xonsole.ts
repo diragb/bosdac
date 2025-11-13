@@ -1,6 +1,6 @@
 // Classes:
 class xonsole {
-  static error(caller: string, error: Error, payload: Record<string, any>, action = 'call') {
+  static error(caller: string, error: Error, payload: Record<string, object | string | number | boolean>, action = 'call') {
     const timestamp = new Date().toISOString()
     const actionStyle = 'color: #d946ef; font-style: italic;'
     const callerStyle = 'color: #4f46e5; font-weight: bold;'
@@ -20,7 +20,7 @@ class xonsole {
     console.groupEnd()
   }
 
-  static warn(caller: string, error: Error, payload: Record<string, any>, action = 'call') {
+  static warn(caller: string, error: Error, payload: Record<string, object | string | number | boolean>, action = 'call') {
     const timestamp = new Date().toISOString()
     const actionStyle = 'color: #d946ef; font-style: italic;'
     const callerStyle = 'color: #4f46e5; font-weight: bold;'

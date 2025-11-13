@@ -239,12 +239,14 @@ export const getFrame = async ({
   log,
   mode,
   opacity,
+  onTileFetched,
 }: {
   selectedTiles: Set<string>
   tileURLsForSelectedTiles: Map<string, [string, string, string, string]>
   log: MOSDACLog
   mode: MOSDACImageMode
   opacity: number
+  onTileFetched?: () => void
 }) => {
   const overlayImageSize = 512
   const dimensions = getAnimationDimensions(selectedTiles)
@@ -290,10 +292,12 @@ export const getFrame = async ({
               opacity,
             })
             if (!status) return null
-            return await createImageBitmap(payload)
+            return await loadBitmap(payload)
           } catch (error) {
             xonsole.error('getFrame:getProcessedImageOverlayTile', error as Error, { key, log, mode })
             return null
+          } finally {
+            onTileFetched?.()
           }
         })())
       }
@@ -344,6 +348,7 @@ export const getAnimation = async ({
   mode,
   opacity,
   selectedAnimationSpeed,
+  setAnimationStatus,
 }: {
   selectedTiles: Set<string>
   tileURLsForSelectedTiles: Map<string, [string, string, string, string]>
@@ -352,8 +357,22 @@ export const getAnimation = async ({
   mode: MOSDACImageMode
   opacity: number
   selectedAnimationSpeed: typeof ANIMATION_SPEEDS[number]
+  setAnimationStatus: (status: string) => void
 }) => {
   const logs = reversedLogs.slice(animationRangeIndices[0], animationRangeIndices[1] + 1)
+  const tilesPerFrame = tileURLsForSelectedTiles.size
+  const totalTileCount = tilesPerFrame * logs.length
+  let fetchedTileCount = 0
+
+  const updateFetchingStatus = () => {
+    if (totalTileCount === 0) return
+    const clamped = Math.min(fetchedTileCount, totalTileCount)
+    setAnimationStatus(`Fetching tiles (${clamped}/${totalTileCount})`)
+  }
+
+  if (totalTileCount > 0) updateFetchingStatus()
+  else setAnimationStatus('Preparing animation')
+
   const frames = await Promise.all(
     logs.map(log => getFrame({
       log,
@@ -361,8 +380,19 @@ export const getAnimation = async ({
       opacity,
       selectedTiles,
       tileURLsForSelectedTiles,
+      onTileFetched: () => {
+        if (totalTileCount === 0) return
+        fetchedTileCount += 1
+        updateFetchingStatus()
+      },
     }))
   )
+
+  if (totalTileCount > 0) {
+    fetchedTileCount = totalTileCount
+    updateFetchingStatus()
+  }
+  setAnimationStatus('Rendering animation')
 
   const unitOverlayImageSize = 512
   const width = frames[0].dimensions.length * unitOverlayImageSize
@@ -406,7 +436,7 @@ export const getAnimation = async ({
 
   rec.start(100)
   await started
-  // await new Promise(r => setTimeout(r, selectedAnimationSpeed.value))
+  setAnimationStatus('Encoding video')
   await sleep(selectedAnimationSpeed.value)
 
   for (let i = 1; i < bitmaps.length; i++) {
@@ -415,7 +445,6 @@ export const getAnimation = async ({
     ctx.fillRect(0, 0, width, height)    
     ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height)
     await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-    // await new Promise(r => setTimeout(r, selectedAnimationSpeed.value))
     await sleep(selectedAnimationSpeed.value)
   }
 
@@ -423,6 +452,7 @@ export const getAnimation = async ({
   rec.stop()
   await stopped
   canvas.remove()
+  setAnimationStatus('Recording complete')
 
   return new Blob(chunks, { type: codec })
 }

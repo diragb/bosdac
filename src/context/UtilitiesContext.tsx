@@ -29,7 +29,7 @@ const UtilitiesContext = createContext<IUtilitiesContext>({
   setIsSidePanelPopoverOpen: () => {},
   isMOSDACDownDialogOpen: false,
   setIsMOSDACDownDialogOpen: () => {},
-  toggleSmallViewDialog: async (_state: boolean) => {},
+  toggleSmallViewDialog: async () => {},
 })
 
 // Functions:
@@ -72,8 +72,6 @@ export const UtilitiesContextProvider = ({ children }: { children: React.ReactNo
     return () => {
       window.removeEventListener('resize', handleResize)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Return:
@@ -97,6 +95,7 @@ export const UtilitiesContextProvider = ({ children }: { children: React.ReactNo
         isSmallViewDialogRendering,
         isSidePanelPopoverOpen,
         isMOSDACDownDialogOpen,
+        toggleSmallViewDialog,
       ])}
     >
       {children}

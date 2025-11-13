@@ -1,5 +1,5 @@
 // Packages:
-import React, { useState, useCallback, useContext, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useContext, useRef, useEffect, useMemo } from 'react'
 import { Geist } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import prettyMilliseconds from 'pretty-ms'
@@ -81,7 +81,6 @@ const AnimationContent = ({
   repeat,
   showTimelapseRecordingControls,
   setShowTimelapseRecordingControls,
-  isRecording,
   isAnimationOn,
   startLongPress,
   stopLongPress,
@@ -95,6 +94,7 @@ const AnimationContent = ({
   setSelectedAnimationSpeed,
   averageLogDownloadSpeed,
   numberOfFrames,
+  isLoadingManyFrames,
 }: {
   mode: MOSDACImageMode
   reversedLogs: MOSDACLogData
@@ -109,7 +109,6 @@ const AnimationContent = ({
   setRepeat: React.Dispatch<React.SetStateAction<boolean>>
   showTimelapseRecordingControls: boolean
   setShowTimelapseRecordingControls: React.Dispatch<React.SetStateAction<boolean>>
-  isRecording: boolean
   repeatRef: React.RefObject<boolean>
   isAnimationOn: boolean
   startLongPress: (direction: 'forward' | 'backward', _selectedLogIndex: number) => Promise<void>
@@ -122,6 +121,7 @@ const AnimationContent = ({
   setSelectedAnimationSpeed: React.Dispatch<React.SetStateAction<typeof ANIMATION_SPEEDS[number]>>
   averageLogDownloadSpeed: number
   numberOfFrames: number
+  isLoadingManyFrames: boolean
 }) => (
   <div className='relative z-[1] flex flex-col gap-2.5 w-full px-2 py-3 bg-card border rounded-md'>
     {
@@ -316,7 +316,7 @@ const AnimationContent = ({
     </div>
 
     {
-      (!isRecording && (averageLogDownloadSpeed === 0 ? numberOfFrames > 10 : (numberOfFrames * averageLogDownloadSpeed > 2 * MINUTE))) && (
+      isLoadingManyFrames && (
         <div className='flex items-start justify-start gap-2 w-full p-2 bg-orange-200 border-[1px] border-orange-300 rounded-sm'>
           <TriangleAlertIcon className='size-4' />
           <span className='text-xs'>You&apos;re about to load in {numberOfFrames} frames.{' '}
@@ -340,17 +340,19 @@ const AnimationContent = ({
 const TimelapseRecordingControls = ({
   showTimelapseRecordingControls,
   isRecording,
-  setIsRecording,
+  startRecording,
   numberOfSelectedTiles,
   numberOfFrames,
   averageLogDownloadSpeed,
+  isLoadingManyFrames,
 }: {
   showTimelapseRecordingControls: boolean
   isRecording: boolean
-  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>
+  startRecording: () => Promise<void>
   numberOfSelectedTiles: number
   numberOfFrames: number
   averageLogDownloadSpeed: number
+  isLoadingManyFrames: boolean
 }) => {
   // Constants:
   const DEFAULT_WRAPPER_HEIGHT = 50
@@ -372,18 +374,25 @@ const TimelapseRecordingControls = ({
       ref={wrapperRef}
       className='absolute z-0 flex flex-col space-y-1 w-full px-2 py-3 bg-card border rounded-md transition-all'
       style={{
-        top: showTimelapseRecordingControls ? 172 + 4 : 172 - height,
+        top: showTimelapseRecordingControls ? 172 + 4 + (isLoadingManyFrames ? 34 + 10 : 0) : 172 - height,
         opacity: showTimelapseRecordingControls ? 1 : 0,
         pointerEvents: showTimelapseRecordingControls ? 'all' : 'none',
       }}
     >
+      <span className='mb-0 text-lg font-semibold'>Record A Timelapse</span>
+      <span className='mb-2 text-sm text-zinc-700'>Follow the steps below to record and download a weather timelapse:</span>
+      <span className='ml-1 text-sm'>1. Select the grids on the map that you wish to record.</span>
+      <span className='ml-1 mb-2 text-sm'>
+        2. Start recording - this process will take {(numberOfSelectedTiles > 0 && averageLogDownloadSpeed > 0) ?
+          '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * (averageLogDownloadSpeed / BOX_COUNT), { compact: true })
+          : 'a few seconds'}.
+      </span>
       <Button
         size='default'
         variant='outline'
         className='w-fit cursor-pointer hover:bg-zinc-200 active:!bg-zinc-300'
-        onClick={() => {
-          setIsRecording(_isRecording => !_isRecording)
-        }}
+        disabled={numberOfSelectedTiles === 0}
+        onClick={startRecording}
       >
         <CircleIcon
           className={cn(
@@ -394,14 +403,6 @@ const TimelapseRecordingControls = ({
 
         Start Recording
       </Button>
-      <span className='mb-0 mt-2 text-lg font-semibold'>Record A Timelapse</span>
-      <span className='mb-2 text-sm text-zinc-700'>Follow the steps below to record and download a weather timelapse:</span>
-      <span className='ml-1 text-sm'>1. Select the grids on the map that you wish to record.</span>
-      <span className='ml-1 text-sm'>
-        2. Start recording - this process will take {(numberOfSelectedTiles > 0 && averageLogDownloadSpeed > 0) ?
-          '~' + prettyMilliseconds(numberOfFrames * numberOfSelectedTiles * (averageLogDownloadSpeed / BOX_COUNT), { compact: true })
-          : 'a few seconds'}.
-      </span>
     </div>
   )
 }
@@ -437,7 +438,7 @@ const AnimationCombobox = ({
     showTimelapseRecordingControls,
     setShowTimelapseRecordingControls,
     isRecording,
-    setIsRecording,
+    startRecording,
     repeatRef,
     startLongPress,
     stopLongPress,
@@ -451,6 +452,12 @@ const AnimationCombobox = ({
 
   // State:
   const [animationPopoverOpen, setAnimationPopoverOpen] = useState(false)
+
+  // Memo:
+  const isLoadingManyFrames = useMemo(() => (
+    !isRecording &&
+    (averageLogDownloadSpeed === 0 ? numberOfFrames > 10 : (numberOfFrames * averageLogDownloadSpeed > 2 * MINUTE))
+  ), [isRecording, averageLogDownloadSpeed, numberOfFrames])
 
   // Functions:
   const formatGMTToLocal12Hours = useCallback((time: string) => {
@@ -517,7 +524,6 @@ const AnimationCombobox = ({
                 setRepeat={setRepeat}
                 showTimelapseRecordingControls={showTimelapseRecordingControls}
                 setShowTimelapseRecordingControls={setShowTimelapseRecordingControls}
-                isRecording={isRecording}
                 repeatRef={repeatRef}
                 isAnimationOn={isAnimationOn}
                 startLongPress={startLongPress}
@@ -530,6 +536,7 @@ const AnimationCombobox = ({
                 setSelectedAnimationSpeed={setSelectedAnimationSpeed}
                 averageLogDownloadSpeed={averageLogDownloadSpeed}
                 numberOfFrames={numberOfFrames}
+                isLoadingManyFrames={isLoadingManyFrames}
               />
             </DialogContent>
           </Dialog>
@@ -575,7 +582,6 @@ const AnimationCombobox = ({
                   setRepeat={setRepeat}
                   showTimelapseRecordingControls={showTimelapseRecordingControls}
                   setShowTimelapseRecordingControls={setShowTimelapseRecordingControls}
-                  isRecording={isRecording}
                   repeatRef={repeatRef}
                   isAnimationOn={isAnimationOn}
                   startLongPress={startLongPress}
@@ -588,14 +594,16 @@ const AnimationCombobox = ({
                   setSelectedAnimationSpeed={setSelectedAnimationSpeed}
                   averageLogDownloadSpeed={averageLogDownloadSpeed}
                   numberOfFrames={numberOfFrames}
+                  isLoadingManyFrames={isLoadingManyFrames}
                 />
                 <TimelapseRecordingControls
                   showTimelapseRecordingControls={showTimelapseRecordingControls}
                   isRecording={isRecording}
-                  setIsRecording={setIsRecording}
+                  startRecording={startRecording}
                   numberOfSelectedTiles={selectedTiles.size}
                   averageLogDownloadSpeed={averageLogDownloadSpeed}
                   numberOfFrames={numberOfFrames}
+                  isLoadingManyFrames={isLoadingManyFrames}
                 />
               </PopoverContent>
             </Popover>

@@ -21,11 +21,12 @@ interface IAnimationContext {
   selectedTiles: Set<string>
   setSelectedTiles: React.Dispatch<React.SetStateAction<Set<string>>>
   isRecording: boolean
-  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>
+  startRecording: () => Promise<void>
   repeatRef: React.RefObject<boolean>
   play: () => Promise<void>
   pause: () => void
   stop: () => void
+  recordingStatus: string
 }
 
 // Constants:
@@ -58,16 +59,14 @@ export const ANIMATION_SPEEDS = [
     value: 1000,
   },
 ]
-
 const LONG_PRESS_DELAY = 500
-
 const AnimationContext = createContext<IAnimationContext>({
   isAnimationOn: false,
   setIsAnimationOn: () => {},
   selectedAnimationSpeed: ANIMATION_SPEEDS[0],
   setSelectedAnimationSpeed: () => {},
   numberOfFrames: 0,
-  startLongPress: async (_direction, _selectedReversedLogIndex) => {},
+  startLongPress: async () => {},
   stopLongPress: () => {},
   isLongPressing: null,
   repeat: false,
@@ -77,11 +76,12 @@ const AnimationContext = createContext<IAnimationContext>({
   selectedTiles: new Set(),
   setSelectedTiles: () => {},
   isRecording: false,
-  setIsRecording: () => {},
+  startRecording: async () => {},
   repeatRef: { current: false },
   play: async () => {},
   pause: () => {},
   stop: () => {},
+  recordingStatus: 'Fetching tiles',
 })
 
 import { BOXES } from '@/lib/box'
@@ -103,8 +103,6 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     selectedLog,
     opacity,
     mode,
-    logs,
-    // zoom,
   } = useContext(MapContext)
 
   // State:
@@ -115,6 +113,7 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
   const [showTimelapseRecordingControls, setShowTimelapseRecordingControls] = useState(false)
   const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set())
   const [isRecording, setIsRecording] = useState(false)
+  const [recordingStatus, setRecordingStatus] = useState('Fetching tiles')
 
   // Ref:
   const isLongPressingRef = useRef<'forward' | 'backward' | null>(null)
@@ -255,6 +254,32 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
     onLogSelect(reversedLogs[animationRangeIndices[1]], reversedLogs.length - 1 - animationRangeIndices[1])
   }
 
+  const startRecording = async () => {
+    if (selectedLog) {
+      setIsRecording(true)
+      const generatedAnimation = await getAnimation({
+        reversedLogs,
+        animationRangeIndices,
+        mode,
+        opacity,
+        selectedTiles,
+        tileURLsForSelectedTiles,
+        selectedAnimationSpeed,
+        setAnimationStatus: setRecordingStatus,
+      })
+      setIsRecording(false)
+
+      const url = URL.createObjectURL(generatedAnimation)
+      const a = document.createElement('a')
+      a.href = url
+      a.download =`BOSDAC-${animationRangeIndices[1] - animationRangeIndices[0] + 1}F-${selectedTiles.size}T-${selectedAnimationSpeed.id}.webm`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
   // Effects:
   useEffect(() => {
     animationRangeIndicesRef.current = animationRangeIndices
@@ -269,80 +294,6 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
       stopLongPress()
     }
   }, [stopLongPress])
-
-  // useEffect(() => {
-  //   for (const tile of tileURLsForSelectedTiles) {
-  //     const indices = tile[0].split('-'), index = parseInt(indices[0]), jindex = parseInt(indices[1])
-  //     const box = BOXES[index][jindex]
-  //     console.log(box)
-  //   }
-  // }, [tileURLsForSelectedTiles])
-
-  // useEffect(() => {
-  //   const box = BOXES[0][40]
-  //   const leafletTileURLs: [string, string, string, string] = [
-  //     "https://b.tile.openstreetmap.org/5/22/12.png",
-  //     "https://c.tile.openstreetmap.org/5/22/13.png",
-  //     "https://c.tile.openstreetmap.org/5/23/12.png",
-  //     "https://a.tile.openstreetmap.org/5/23/13.png"
-  //   ]
-
-  //   if (selectedLog) {
-  //     getProcessedImageOverlayTile({
-  //       box,
-  //       leafletTileURLs,
-  //       log: selectedLog,
-  //       mode,
-  //       opacity,
-  //     })
-  //   }
-  // }, [selectedLog, mode, opacity])
-
-  // useEffect(() => {
-  //   if (selectedTiles.size > 0) console.log(getAnimationDimensions(selectedTiles))
-  // }, [selectedTiles])
-
-  const x = async () => {
-    if (selectedLog) {
-      const video = await getAnimation({
-        reversedLogs,
-        animationRangeIndices,
-        mode,
-        opacity,
-        selectedTiles,
-        tileURLsForSelectedTiles,
-        selectedAnimationSpeed,
-      })
-      const url = URL.createObjectURL(video);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = 'slideshow.webm';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-  }
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "l" || e.key === "L") {
-        x();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    x,
-    reversedLogs,
-    animationRangeIndices,
-    mode,
-    opacity,
-    selectedTiles,
-    tileURLsForSelectedTiles,
-    selectedAnimationSpeed,
-  ]);
   
   // Return:
   return (
@@ -363,11 +314,12 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         selectedTiles,
         setSelectedTiles,
         isRecording,
-        setIsRecording,
+        startRecording,
         repeatRef,
         play,
         pause,
         stop,
+        recordingStatus,
       }), [
         isAnimationOn,
         selectedAnimationSpeed,
@@ -377,6 +329,7 @@ export const AnimationContextProvider = ({ children }: { children: React.ReactNo
         showTimelapseRecordingControls,
         selectedTiles,
         isRecording,
+        recordingStatus,
       ])}
     >
       {children}
