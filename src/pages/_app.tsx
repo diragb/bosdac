@@ -19,14 +19,6 @@ const geistSans = Geist({
 import { Toaster } from '@/components/ui/sonner'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import AnimationFrameGenerator from '@/components/AnimationFrameGenerator'
-
-// Context:
-import { UtilitiesContextProvider } from '@/context/UtilitiesContext'
-import { GlobalAnimationContextProvider } from '@/context/GlobalAnimationContext'
-import { AnimationContextProvider } from '@/context/AnimationContext'
-import { MapContextProvider } from '@/context/MapContext'
-import { LayersContextProvider } from '@/context/LayersContext'
 
 // Functions:
 const App = ({ Component, pageProps }: AppProps) => (
@@ -38,18 +30,7 @@ const App = ({ Component, pageProps }: AppProps) => (
       <meta name='mobile-web-app-capable' content='yes' />
     </Head>
     <main className={`${geistSans.className} font-sans`}>
-      <UtilitiesContextProvider>
-        <GlobalAnimationContextProvider>
-          <MapContextProvider>
-            <AnimationContextProvider>
-              <LayersContextProvider>
-                <AnimationFrameGenerator />
-                <Component {...pageProps} />
-              </LayersContextProvider>
-            </AnimationContextProvider>
-          </MapContextProvider>
-        </GlobalAnimationContextProvider>
-      </UtilitiesContextProvider>
+      <Component {...pageProps} />
       <Toaster />
       <Analytics />
       <SpeedInsights />

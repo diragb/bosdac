@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import SidePanel from '@/components/SidePanel'
+import _SidePanel from '@/components/SidePanel/SidePanelPrimitive'
 import { Button } from '@/components/ui/button'
 
 // Context:
@@ -102,7 +102,7 @@ const MobileSidePanel = () => {
               />
             )
           }
-          <SidePanel />
+          <_SidePanel />
         </PopoverContent>
       </Popover>
     </>

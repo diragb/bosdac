@@ -6,7 +6,7 @@ import prettyMilliseconds from 'pretty-ms'
 
 // Typescript:
 import type { MOSDACLog, MOSDACLogData } from '@/pages/api/log'
-import { LogDownloadStatus } from '@/components/SidePanel'
+import { LogDownloadStatus } from '@/components/SidePanel/SidePanelPrimitive'
 import type { MOSDACImageMode } from '@/pages/api/history'
 
 // Assets:
