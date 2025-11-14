@@ -20,6 +20,11 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
+// SEO:
+const siteURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+const seoDescription = 'Experience MOSDAC\'s india live satellite stream, satellite view of India, and live weather for India and China in one modern interface.'
+const seoKeywords = 'MOSDAC, india live satellite, satellite view of india, live weather india, live weather china, ISRO weather data'
+
 // Functions:
 const Landing = () => {
   // State:
@@ -35,6 +40,12 @@ const Landing = () => {
     <>
       <Head>
         <title>BOSDAC - Better MOSDAC</title>
+        <meta name='description' content={seoDescription} />
+        <meta name='keywords' content={seoKeywords} />
+        <link rel='canonical' href={siteURL} />
+        <meta property='og:title' content='BOSDAC - Better MOSDAC' />
+        <meta property='og:description' content={seoDescription} />
+        <meta property='og:url' content={siteURL} />
       </Head>
       <ScrollArea className='w-screen h-screen'>
         <div className='relative flex justify-center items-center w-screen h-screen bg-black overflow-hidden'>
@@ -110,6 +121,42 @@ const Landing = () => {
             </div>
           </div>
         </div>
+        <section className='sr-only'>
+          <div className='max-w-4xl mx-auto space-y-6'>
+            <h3 className='text-2xl sm:text-3xl font-semibold text-white'>
+              MOSDAC data, optimized for india live satellite and live weather
+            </h3>
+            <p className='text-sm sm:text-base text-zinc-300 leading-relaxed'>
+              BOSDAC keeps the spirit of MOSDAC alive with instant access to the india live satellite feed, a crisp satellite view of India, and neighboring overlays that include live weather India as well as live weather China. Every layer is curated for meteorologists, students, and aviation enthusiasts who want fast-loading imagery without sacrificing detail.
+            </p>
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <article className='rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4'>
+                <h4 className='text-lg font-semibold text-white'>Satellite View of India</h4>
+                <p className='mt-2 text-sm text-zinc-300'>
+                  Navigate a high-resolution satellite view of India sourced from MOSDAC, updated frequently for lightning, storm, and cyclone tracking.
+                </p>
+              </article>
+              <article className='rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4'>
+                <h4 className='text-lg font-semibold text-white'>Live Weather India & China</h4>
+                <p className='mt-2 text-sm text-zinc-300'>
+                  Layer precipitation, wind, and temperature products to compare live weather India readings with adjacent live weather China insights.
+                </p>
+              </article>
+              <article className='rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4'>
+                <h4 className='text-lg font-semibold text-white'>MOSDAC Reliability</h4>
+                <p className='mt-2 text-sm text-zinc-300'>
+                  All imagery streams directly from MOSDAC, ensuring trustworthy india live satellite snapshots with ISRO provenance.
+                </p>
+              </article>
+              <article className='rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4'>
+                <h4 className='text-lg font-semibold text-white'>Instant Access Anywhere</h4>
+                <p className='mt-2 text-sm text-zinc-300'>
+                  Responsive controls, quick links, and offline-ready caching make it easy to keep BOSDAC open as your always-on MOSDAC companion.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
       </ScrollArea>
     </>
   )

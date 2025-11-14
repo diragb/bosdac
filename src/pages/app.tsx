@@ -3,6 +3,9 @@ import dynamic from 'next/dynamic'
 import React, { useEffect } from 'react'
 import localforage from 'localforage'
 
+// Constants:
+import { appDescription, appKeywords, siteURL } from './_document'
+
 // Components:
 import Head from 'next/head'
 import AnimationOverlay from '@/components/AnimationOverlay'
@@ -39,7 +42,12 @@ const BOSDAC = () => {
             <LayersContextProvider>
               <AnimationFrameGenerator />
               <Head>
-                <title>BOSDAC - Better MOSDAC</title>
+                <title>BOSDAC - Live MOSDAC Viewer</title>
+                <meta name='description' content={appDescription} />
+                <meta name='keywords' content={appKeywords} />
+                <meta property='og:title' content='BOSDAC - Live MOSDAC Viewer' />
+                <meta property='og:description' content={appDescription} />
+                <meta property='og:url' content={siteURL} />
               </Head>
               <div className='relative w-screen h-screen bg-slate-400 overflow-hidden'>
                 <AnimationOverlay />

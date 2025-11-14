@@ -1,7 +1,8 @@
 // Constants:
-const siteURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-const appName = 'BOSDAC - Better MOSDAC'
-const appDescription = 'Modern, user-friendly interface for viewing live satellite imagery and meteorological data from ISRO\'s MOSDAC.'
+export const siteURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+export const appName = 'BOSDAC - Better MOSDAC'
+export const appDescription = 'BOSDAC streams MOSDAC data for india live satellite imagery, satellite view of india, and live weather insights for India and China.'
+export const appKeywords = 'india weather, MOSDAC, BOSDAC, live satellite view of india, weather, india satellite image, live satellite, india, imd, satellite live, imd live, live weather china, ISRO, ISRO weather data'
 
 // Components:
 import {
@@ -18,6 +19,7 @@ const Document = () => (
       {/* Primary Meta Tags */}
       <meta name='title' content={appName} />
       <meta name='description' content={appDescription} />
+      <meta name='keywords' content={appKeywords} />
       <meta name='application-name' content='BOSDAC' />
       <meta name='theme-color' content='#0f172a' />
       <meta name='image' content={`${siteURL}/og-square.jpg`} />
@@ -63,6 +65,13 @@ const Document = () => (
             applicationCategory: 'Weather',
             operatingSystem: 'Web',
             description: appDescription,
+            keywords: [
+              'MOSDAC',
+              'india live satellite',
+              'satellite view of india',
+              'live weather india',
+              'live weather china',
+            ],
             offers: {
               '@type': 'Offer',
               price: '0',
@@ -73,6 +82,41 @@ const Document = () => (
               name: 'diragb',
               url: 'https://github.com/diragb',
             },
+          }),
+        }}
+      />
+      <script
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'How can I view MOSDAC India live satellite imagery?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Open BOSDAC in your browser to view MOSDAC-powered india live satellite tiles with up-to-date imagery and overlays.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Does BOSDAC show the satellite view of India and China?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes. BOSDAC offers a high-resolution satellite view of India and live weather layers that extend into neighboring regions such as China.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Where can I check live weather for India or China?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'The dashboard streams live weather India and live weather China layers from MOSDAC, letting you monitor storms, winds, and rainfall.',
+                },
+              },
+            ],
           }),
         }}
       />
