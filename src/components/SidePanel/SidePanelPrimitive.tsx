@@ -25,7 +25,7 @@ import MapContext from '@/context/MapContext'
 import UtilitiesContext from '@/context/UtilitiesContext'
 
 // Functions:
-const SidePanel = () => {
+const SidePanelPrimitive = () => {
   // Constants:
   const { useSmallView } = useContext(UtilitiesContext)
   const {
@@ -98,4 +98,4 @@ const SidePanel = () => {
 }
 
 // Exports:
-export default SidePanel
+export default SidePanelPrimitive

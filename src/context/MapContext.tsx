@@ -10,7 +10,7 @@ import { getMOSDACImageURL } from '@/lib/map'
 import type { Layer } from '@/components/LayersCombobox'
 import type { MOSDACLog } from '@/pages/api/log'
 import { MOSDACImageMode } from '@/pages/api/history'
-import { LogDownloadStatus } from '@/components/SidePanel'
+import { LogDownloadStatus } from '@/components/SidePanel/SidePanelPrimitive'
 
 interface IMapContext {
   isHistoryOn: boolean

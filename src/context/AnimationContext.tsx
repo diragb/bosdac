@@ -34,7 +34,7 @@ interface IAnimationContext {
 }
 
 // Constants:
-import { LogDownloadStatus } from '@/components/SidePanel'
+import { LogDownloadStatus } from '@/components/SidePanel/SidePanelPrimitive'
 
 export const ANIMATION_SPEEDS = [
   {
