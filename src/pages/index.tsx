@@ -91,7 +91,7 @@ const Landing = () => {
                   Use The App
                 </Button>
               </Link>
-              <Link href='https://diragb.dev/blog/bosdac'>
+              <Link target='_blank' referrerPolicy='no-referrer' href='https://diragb.dev/blog/bosdac'>
                 <Button
                   variant='default'
                   size='sm'
@@ -112,7 +112,7 @@ const Landing = () => {
               <a className='font-semibold hover:underline' href='https://www.isro.gov.in/' target='_blank'>
                 <img
                   alt='ISRO'
-                  src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Indian_Space_Research_Organisation_Logo.svg/794px-Indian_Space_Research_Organisation_Logo.svg.png'
+                  src='/Indian_Space_Research_Organisation_Logo.svg'
                   width={42}
                   height={42}
                   className='scale-85 sm:scale-100'
